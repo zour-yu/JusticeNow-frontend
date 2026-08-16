@@ -35,6 +35,11 @@ yarn-error.*
 .env*.local
 .env.*
 
+# Custom Agent Documentation
+AGENTS.md
+*.md
+!README.md
+
 # typescript
 *.tsbuildinfo
 
