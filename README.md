@@ -1,1 +1,1 @@
-# JusticeNow
+# JusticeNow Frontend
