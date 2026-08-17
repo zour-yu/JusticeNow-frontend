@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "110044162693",
+    "project_id": "justice-now",
+    "storage_bucket": "justice-now.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:110044162693:android:3075ac7c446ed4b98a17ec",
+        "android_client_info": {
+          "package_name": "justice.now"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "110044162693-80gpc1ek5lf733g2k9q2an6qsqsho868.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBvAmnr43B0xzR6hd29o8uUU1F7NJ0S9n4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "110044162693-80gpc1ek5lf733g2k9q2an6qsqsho868.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
