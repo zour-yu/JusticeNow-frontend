@@ -36,8 +36,9 @@ export default function RegisterScreen({ navigation }: Props) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [agreeTerms, setAgreeTerms] = useState(false);
 
-  const { register, isLoading, error } = useAuthStore();
+  const { register, logout, isLoading, error } = useAuthStore();
 
   const handleRegister = async () => {
     if (!firstName || !lastName || !email || !password || !phone) {
@@ -48,9 +49,13 @@ export default function RegisterScreen({ navigation }: Props) {
       Alert.alert('Error', 'Passwords do not match');
       return;
     }
+    if (!agreeTerms) {
+      Alert.alert('Agreement Required', 'Please accept the Terms and Conditions to proceed.');
+      return;
+    }
     
     try {
-      const user = await register({
+      await register({
         firstName,
         lastName,
         email,
@@ -59,11 +64,11 @@ export default function RegisterScreen({ navigation }: Props) {
         role: selectedRole,
       });
       
-      if (user.status === 'PENDING') {
-        navigation.replace('PendingApproval');
-      } else {
-        navigation.replace('Home');
-      }
+      // Force user to log in after registration per user request
+      await logout();
+      
+      Alert.alert('Success', 'Account created successfully! Please log in.');
+      navigation.replace('Login');
     } catch (err) {
       // Error is handled by the store and displayed in UI
     }
@@ -223,6 +228,20 @@ export default function RegisterScreen({ navigation }: Props) {
 
               {/* Error */}
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+              {/* Terms and Conditions Checkbox */}
+              <TouchableOpacity 
+                style={styles.checkboxContainer} 
+                onPress={() => setAgreeTerms(!agreeTerms)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.checkbox, agreeTerms && styles.checkboxChecked]}>
+                  {agreeTerms && <Ionicons name="checkmark" size={14} color="#FFFFFF" />}
+                </View>
+                <Text style={styles.checkboxText}>
+                  I agree to the <Text style={styles.checkboxLink}>Terms and Conditions</Text>
+                </Text>
+              </TouchableOpacity>
 
               {/* Register Button */}
               <TouchableOpacity
@@ -438,6 +457,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+
+  /* ── Checkbox ── */
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    marginTop: -4,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderWidth: 1,
+    borderColor: '#9CA3AF',
+    borderRadius: 4,
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  checkboxChecked: {
+    backgroundColor: '#0D4722',
+    borderColor: '#0D4722',
+  },
+  checkboxText: {
+    fontSize: 14,
+    color: '#4B5563',
+  },
+  checkboxLink: {
+    color: '#0D4722',
+    fontWeight: '600',
   },
 
   /* ── Switch to Login ── */
