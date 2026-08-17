@@ -2,177 +2,24 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-
-import { SubmitComplaintScreen } from './src/features/complaints/screens/SubmitComplaintScreen';
-import { MyComplaintsScreen } from './src/features/complaints/screens/MyComplaintsScreen';
-import { ComplaintDetailScreen } from './src/features/complaints/screens/ComplaintDetailScreen';
+import LoginScreen from './src/features/auth/screens/LoginScreen';
+import RegisterScreen from './src/features/auth/screens/RegisterScreen';
+import PendingApprovalScreen from './src/features/auth/screens/PendingApprovalScreen';
+import HomeScreen from './src/features/home/screens/HomeScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function CitizenHomeScreen({ navigation }: any) {
-  return (
-    <View style={styles.homeContainer}>
-      <StatusBar barStyle="light-content" backgroundColor="#0B132B" />
-      
-      {/* Hero Card */}
-      <View style={styles.heroCard}>
-        <View style={styles.logoBadge}>
-          <Text style={styles.logoBadgeText}>⚖️ JUSTICE NOW</Text>
-        </View>
-        <Text style={styles.heroTitle}>Human Rights Case Tracking System</Text>
-        <Text style={styles.heroSubtitle}>
-          Empowering citizens to report violations, track investigations in real-time, and ensure institutional accountability.
-        </Text>
-
-        <View style={styles.heroActionRow}>
-          <TouchableOpacity
-            style={styles.primaryActionBtn}
-            onPress={() => navigation.navigate('SubmitTab')}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.primaryActionText}>＋ File New Complaint</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Quick Action Tiles */}
-      <View style={styles.tilesGrid}>
-        <TouchableOpacity
-          style={styles.tile}
-          onPress={() => navigation.navigate('ComplaintsTab')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.tileIcon}>📑</Text>
-          <Text style={styles.tileTitle}>Track My Cases</Text>
-          <Text style={styles.tileDescription}>
-            View status updates, review timelines, and follow investigation progress.
-          </Text>
-          <Text style={styles.tileLink}>View Case History →</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.tile}
-          onPress={() => navigation.navigate('SubmitTab')}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.tileIcon}>🔒</Text>
-          <Text style={styles.tileTitle}>Anonymous Reporting</Text>
-          <Text style={styles.tileDescription}>
-            Report incidents with end-to-end identity protection and safe reference codes.
-          </Text>
-          <Text style={styles.tileLink}>Submit Anonymously →</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Trust & Safety Info */}
-      <View style={styles.trustBanner}>
-        <Text style={styles.trustIcon}>🛡️</Text>
-        <View style={styles.trustTextWrap}>
-          <Text style={styles.trustTitle}>Citizen Protection Standard</Text>
-          <Text style={styles.trustSubtitle}>
-            Every report is logged with an immutable audit timeline and assigned to verified human rights officers.
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function CitizenTabNavigator() {
-  return (
-    <Tab.Navigator
-      screenOptions={{
-        headerStyle: {
-          backgroundColor: '#1C2541',
-          shadowColor: 'transparent',
-          elevation: 0,
-        },
-        headerTintColor: '#FFFFFF',
-        headerTitleStyle: {
-          fontWeight: '700',
-        },
-        tabBarStyle: {
-          backgroundColor: '#0B132B',
-          borderTopColor: '#1C2541',
-          borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 6,
-        },
-        tabBarActiveTintColor: '#60A5FA',
-        tabBarInactiveTintColor: '#64748B',
-      }}
-    >
-      <Tab.Screen
-        name="HomeTab"
-        component={CitizenHomeScreen}
-        options={{
-          title: 'Home',
-          headerTitle: 'Justice Now',
-          tabBarLabel: 'Home',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>🏠</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="SubmitTab"
-        component={SubmitComplaintScreen}
-        options={{
-          title: 'Report Violation',
-          headerTitle: 'Submit Human Rights Complaint',
-          tabBarLabel: 'Report',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>📝</Text>,
-        }}
-      />
-      <Tab.Screen
-        name="ComplaintsTab"
-        component={MyComplaintsScreen}
-        options={{
-          title: 'My Complaints',
-          headerTitle: 'Case Tracking',
-          tabBarLabel: 'My Cases',
-          tabBarIcon: ({ color }) => <Text style={{ fontSize: 18, color }}>📊</Text>,
-        }}
-      />
-    </Tab.Navigator>
-  );
-}
-
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <NavigationContainer>
-        <Stack.Navigator
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: '#1C2541',
-            },
-            headerTintColor: '#FFFFFF',
-            headerTitleStyle: {
-              fontWeight: '700',
-            },
-          }}
-        >
-          <Stack.Screen
-            name="MainTabs"
-            component={CitizenTabNavigator}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="SubmitComplaint"
-            component={SubmitComplaintScreen}
-            options={{ title: 'Report Violation' }}
-          />
-          <Stack.Screen
-            name="ComplaintDetail"
-            component={ComplaintDetailScreen}
-            options={{ headerShown: false }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </SafeAreaProvider>
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />
+        <Stack.Screen name="Home" component={HomeScreen} />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
