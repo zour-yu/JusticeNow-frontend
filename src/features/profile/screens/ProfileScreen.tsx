@@ -35,7 +35,7 @@ const SettingItem = ({ icon, label, rightText, hideBorder }: {
 );
 
 export const ProfileScreen = ({ navigation }: Props) => {
-  const { logout } = useAuthStore();
+  const { user, logout } = useAuthStore();
 
   const handleLogout = async () => {
     await logout();
@@ -89,11 +89,13 @@ export const ProfileScreen = ({ navigation }: Props) => {
 
             {/* User Details */}
             <View style={styles.userDetails}>
-              <Text style={styles.userName}>Sarah Fernando</Text>
-              <Text style={styles.userEmail}>sarah.fernando@email.com</Text>
+              <Text style={styles.userName}>
+                {user?.firstName} {user?.lastName}
+              </Text>
+              <Text style={styles.userEmail}>{user?.email}</Text>
               <View style={styles.phoneRow}>
                 <Ionicons name="call-outline" size={12} color="#6B7280" />
-                <Text style={styles.userPhone}> +94 71 123 4567</Text>
+                <Text style={styles.userPhone}> {user?.phone || 'No phone added'}</Text>
               </View>
             </View>
 
