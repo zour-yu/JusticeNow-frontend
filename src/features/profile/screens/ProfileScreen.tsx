@@ -19,10 +19,10 @@ interface Props {
 const { width } = Dimensions.get('window');
 
 // Reusable Settings Row Component
-const SettingItem = ({ icon, label, rightText, hideBorder }: { 
-  icon: any; label: string; rightText?: string; hideBorder?: boolean 
+const SettingItem = ({ icon, label, rightText, hideBorder, onPress }: { 
+  icon: any; label: string; rightText?: string; hideBorder?: boolean; onPress?: () => void;
 }) => (
-  <TouchableOpacity style={[styles.settingItem, !hideBorder && styles.settingItemBorder]}>
+  <TouchableOpacity style={[styles.settingItem, !hideBorder && styles.settingItemBorder]} onPress={onPress}>
     <View style={styles.settingItemLeft}>
       <Ionicons name={icon} size={20} color="#4B5563" style={{ width: 28 }} />
       <Text style={styles.settingItemLabel}>{label}</Text>
@@ -128,7 +128,11 @@ export const ProfileScreen = ({ navigation }: Props) => {
           {/* Settings Links */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Account & Settings</Text>
-            <SettingItem icon="person-outline"              label="Personal Information" />
+            <SettingItem 
+              icon="person-outline" 
+              label="Personal Information" 
+              onPress={() => navigation.navigate('PersonalInformation')} 
+            />
             <SettingItem icon="shield-checkmark-outline"   label="Security" />
             <SettingItem icon="notifications-outline"      label="Notification Preferences" />
             <SettingItem icon="globe-outline"              label="Language" rightText="English" />
@@ -211,9 +215,13 @@ const styles = StyleSheet.create({
     height: SKYLINE_H,
     position: 'relative',
     backgroundColor: '#FFF',
+    marginHorizontal: 20,
+    marginTop: 10,
+    borderRadius: 20,
+    overflow: 'hidden',
   },
   skylineImage: {
-    width: width,
+    width: '100%',
     height: '100%',
   },
 
@@ -222,6 +230,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     marginTop: -30, 
+    marginHorizontal: 20,
     paddingHorizontal: 20,
     paddingTop: 25,
   },

@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   },
   /* ── Hero Section ── */
   heroContainer: {
-    marginHorizontal: 20,
+    marginHorizontal: 20, // Make it full-width
     marginTop: 10,
     marginBottom: 30,
     position: 'relative',
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   heroBg: {
     width: '100%',
     height: 220,
-    borderRadius: 20,
+    borderRadius: 20, // Remove rounded corners for full-bleed look
     overflow: 'hidden',
   },
   heroTextContainer: {

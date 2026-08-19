@@ -9,6 +9,7 @@ import { SubmitComplaintScreen } from './src/features/complaints/screens/SubmitC
 import { MyComplaintsScreen } from './src/features/complaints/screens/MyComplaintsScreen';
 import { ComplaintDetailScreen } from './src/features/complaints/screens/ComplaintDetailScreen';
 import { ProfileScreen } from './src/features/profile/screens/ProfileScreen';
+import PersonalInformationScreen from './src/features/profile/screens/PersonalInformationScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -24,6 +25,7 @@ export default function App() {
         <Stack.Screen name="MyComplaints" component={MyComplaintsScreen} />
         <Stack.Screen name="ComplaintDetail" component={ComplaintDetailScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="PersonalInformation" component={PersonalInformationScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
