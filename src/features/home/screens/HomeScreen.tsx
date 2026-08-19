@@ -210,7 +210,7 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.navText}>Messages</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Profile')}>
           <Ionicons name="person-outline" size={24} color="#9CA3AF" />
           <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   },
   /* ── Hero Section ── */
   heroContainer: {
-    marginHorizontal: 20,
+    marginHorizontal: 20, // Make it full-width
     marginTop: 10,
     marginBottom: 30,
     position: 'relative',
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   heroBg: {
     width: '100%',
     height: 220,
-    borderRadius: 20,
+    borderRadius: 20, // Remove rounded corners for full-bleed look
     overflow: 'hidden',
   },
   heroTextContainer: {
