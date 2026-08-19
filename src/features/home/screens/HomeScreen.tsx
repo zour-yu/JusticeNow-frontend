@@ -210,7 +210,7 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={styles.navText}>Messages</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Profile')}>
           <Ionicons name="person-outline" size={24} color="#9CA3AF" />
           <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
