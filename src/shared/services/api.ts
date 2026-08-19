@@ -15,10 +15,16 @@ const api = axios.create({
 // Intercept requests to attach the Firebase ID token
 api.interceptors.request.use(
   async (config) => {
-    const user = auth.currentUser;
-    if (user) {
-      const token = await user.getIdToken();
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const user = auth?.currentUser;
+      if (user) {
+        const token = await user.getIdToken();
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+      }
+    } catch {
+      // Ignore token retrieval errors if not signed in
     }
     return config;
   },
