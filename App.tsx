@@ -11,6 +11,7 @@ import { MyComplaintsScreen } from './src/features/complaints/screens/MyComplain
 import { ComplaintDetailScreen } from './src/features/complaints/screens/ComplaintDetailScreen';
 import { ProfileScreen } from './src/features/profile/screens/ProfileScreen';
 import PersonalInformationScreen from './src/features/profile/screens/PersonalInformationScreen';
+import SecurityScreen from './src/features/profile/screens/SecurityScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -28,6 +29,7 @@ export default function App() {
         <Stack.Screen name="ComplaintDetail" component={ComplaintDetailScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="PersonalInformation" component={PersonalInformationScreen} />
+        <Stack.Screen name="Security" component={SecurityScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
