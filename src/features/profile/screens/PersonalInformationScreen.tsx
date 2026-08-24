@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   View, 
   Text, 
@@ -6,7 +6,10 @@ import {
   SafeAreaView, 
   TouchableOpacity, 
   ScrollView,
-  Dimensions
+  Dimensions,
+  TextInput,
+  ActivityIndicator,
+  Alert
 } from 'react-native';
 import { useAuthStore } from '../../../shared/store/authStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,39 +21,96 @@ interface Props {
 
 const { width } = Dimensions.get('window');
 
-const InfoRow = ({ icon, label, value }: { icon: any, label: string, value: string }) => (
+const InfoRow = ({
+  icon,
+  label,
+  value,
+  isEditing,
+  onChangeText,
+  keyboardType = 'default'
+}: {
+  icon: any;
+  label: string;
+  value: string;
+  isEditing?: boolean;
+  onChangeText?: (text: string) => void;
+  keyboardType?: any;
+}) => (
   <View style={styles.infoRow}>
     <View style={styles.infoRowLeft}>
       <Ionicons name={icon} size={20} color="#0D4722" style={styles.infoIcon} />
       <Text style={styles.infoLabel}>{label}</Text>
     </View>
     <View style={styles.infoRowRight}>
-      <Text style={styles.infoValue} numberOfLines={1}>{value}</Text>
-      <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
+      {isEditing ? (
+        <TextInput
+          style={styles.inputField}
+          value={value}
+          onChangeText={onChangeText}
+          keyboardType={keyboardType}
+        />
+      ) : (
+        <Text style={styles.infoValue} numberOfLines={1}>{value}</Text>
+      )}
+      {!isEditing && <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />}
     </View>
   </View>
 );
 
 export default function PersonalInformationScreen({ navigation }: Props) {
-  const { user } = useAuthStore();
+  const { user, updateProfile } = useAuthStore();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [editFirstName, setEditFirstName] = useState(user?.firstName || '');
+  const [editLastName, setEditLastName] = useState(user?.lastName || '');
+  const [editPhone, setEditPhone] = useState(user?.phone || '');
+
+  const handleEditToggle = () => {
+    if (isEditing) {
+      // Cancel edit mode
+      setIsEditing(false);
+      setEditFirstName(user?.firstName || '');
+      setEditLastName(user?.lastName || '');
+      setEditPhone(user?.phone || '');
+    } else {
+      setIsEditing(true);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!editFirstName.trim() || !editLastName.trim() || !editPhone.trim()) {
+      Alert.alert('Error', 'Fields cannot be empty.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await updateProfile({
+        firstName: editFirstName,
+        lastName: editLastName,
+        phone: editPhone,
+      });
+      setIsEditing(false);
+      Alert.alert('Success', 'Profile updated successfully.');
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
-      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.headerIconBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#0D4722" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Personal Information</Text>
-        <View style={{ width: 34 }} /> {/* Placeholder for center alignment */}
+        <View style={{ width: 34 }} />
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} bounces={false}>
         
-        {/* SVG WAVE CAP */}
-        {/* We wrap the SVG in a white view, then translate the SVG itself DOWN by 5px 
-            so the green bleeds out of the white container. We then pull the green hero 
-            section UP by 5px so the two green areas overlap massively, preventing any gaps. */}
         <View style={{ backgroundColor: '#FFF', zIndex: 10 }}>
           <Svg height="50" width={width} style={{ transform: [{ translateY: 5 }] }}>
             <Path
@@ -60,7 +120,6 @@ export default function PersonalInformationScreen({ navigation }: Props) {
           </Svg>
         </View>
 
-        {/* GREEN HERO SECTION */}
         <View style={[styles.heroSection, { marginTop: -5 }]}>
           <View style={styles.profileBannerContent}>
             <View style={styles.avatarContainer}>
@@ -73,33 +132,51 @@ export default function PersonalInformationScreen({ navigation }: Props) {
             </View>
 
             <View style={styles.userDetails}>
-              <Text style={styles.userName}>{user?.firstName} {user?.lastName}</Text>
+              <Text style={styles.userName}>{`${user?.firstName || ''} ${user?.lastName || ''}`}</Text>
               <Text style={styles.userSubtext}>Status: {user?.status}</Text>
               <Text style={styles.userSubtext}>Keep your details up to date.</Text>
             </View>
           </View>
         </View>
 
-        {/* MAIN CONTENT (WHITE CARD OVERLAPPING GREEN) */}
         <View style={styles.mainContent}>
-          
           <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Contact Information</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Contact Information</Text>
+              {isEditing && (
+                <TouchableOpacity onPress={handleEditToggle} style={styles.cancelBtn}>
+                  <Text style={styles.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             
             <InfoRow 
               icon="person-outline" 
-              label="Full Name" 
-              value={`${user?.firstName} ${user?.lastName}`} 
+              label="First Name" 
+              value={isEditing ? editFirstName : (user?.firstName || 'N/A')} 
+              isEditing={isEditing}
+              onChangeText={setEditFirstName}
+            />
+            <InfoRow 
+              icon="person-outline" 
+              label="Last Name" 
+              value={isEditing ? editLastName : (user?.lastName || 'N/A')} 
+              isEditing={isEditing}
+              onChangeText={setEditLastName}
             />
             <InfoRow 
               icon="mail-outline" 
               label="Email Address" 
               value={user?.email || 'N/A'} 
+              isEditing={false} // Email cannot be edited here
             />
             <InfoRow 
               icon="call-outline" 
               label="Phone Number" 
-              value={user?.phone || 'N/A'} 
+              value={isEditing ? editPhone : (user?.phone || 'N/A')} 
+              isEditing={isEditing}
+              onChangeText={setEditPhone}
+              keyboardType="phone-pad"
             />
           </View>
 
@@ -123,8 +200,17 @@ export default function PersonalInformationScreen({ navigation }: Props) {
             />
           </View>
 
-          <TouchableOpacity style={styles.editBtn} activeOpacity={0.8}>
-            <Text style={styles.editBtnText}>Edit Information</Text>
+          <TouchableOpacity 
+            style={styles.editBtn} 
+            activeOpacity={0.8} 
+            onPress={isEditing ? handleSave : handleEditToggle}
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text style={styles.editBtnText}>{isEditing ? 'Save Changes' : 'Edit Information'}</Text>
+            )}
           </TouchableOpacity>
           
           <View style={{ height: 100 }} />
@@ -229,11 +315,27 @@ const styles = StyleSheet.create({
   sectionContainer: {
     marginBottom: 25,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
   sectionTitle: {
     fontSize: 15,
     fontWeight: '800',
     color: '#111827',
-    marginBottom: 15,
+  },
+  cancelBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+  },
+  cancelBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#EF4444',
   },
   infoRow: {
     flexDirection: 'row',
@@ -268,6 +370,17 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginRight: 10,
     flexShrink: 1,
+  },
+  inputField: {
+    flex: 1,
+    textAlign: 'right',
+    fontSize: 12,
+    color: '#111827',
+    fontWeight: '500',
+    paddingVertical: 0,
+    marginRight: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#0D4722',
   },
 
   editBtn: {

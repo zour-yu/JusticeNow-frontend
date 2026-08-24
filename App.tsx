@@ -18,6 +18,7 @@ import { AdminCategorizationDetailScreen } from './src/features/admin/screens/Ad
 import { AdminAssignInvestigatorScreen } from './src/features/admin/screens/AdminAssignInvestigatorScreen';
 import { AssignedCasesScreen } from './src/features/cases/screens/AssignedCasesScreen';
 import { CaseDetailScreen } from './src/features/cases/screens/CaseDetailScreen';
+import SecurityScreen from './src/features/profile/screens/SecurityScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -42,6 +43,7 @@ export default function App() {
         <Stack.Screen name="AdminCategorizationList" component={AdminCategorizationListScreen} />
         <Stack.Screen name="AdminCategorizationDetail" component={AdminCategorizationDetailScreen} />
         <Stack.Screen name="AdminAssignInvestigator" component={AdminAssignInvestigatorScreen} />
+        <Stack.Screen name="Security" component={SecurityScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

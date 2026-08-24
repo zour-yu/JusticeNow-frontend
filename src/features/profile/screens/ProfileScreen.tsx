@@ -28,7 +28,7 @@ const SettingItem = ({ icon, label, rightText, hideBorder, onPress }: {
       <Text style={styles.settingItemLabel}>{label}</Text>
     </View>
     <View style={styles.settingItemRight}>
-      {rightText && <Text style={styles.settingItemRightText}>{rightText}</Text>}
+      {rightText ? <Text style={styles.settingItemRightText}>{rightText}</Text> : null}
       <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
     </View>
   </TouchableOpacity>
@@ -90,7 +90,7 @@ export const ProfileScreen = ({ navigation }: Props) => {
             {/* User Details */}
             <View style={styles.userDetails}>
               <Text style={styles.userName}>
-                {user?.firstName} {user?.lastName}
+                {`${user?.firstName || ''} ${user?.lastName || ''}`}
               </Text>
               <Text style={styles.userEmail}>{user?.email}</Text>
               <View style={styles.phoneRow}>
@@ -133,7 +133,7 @@ export const ProfileScreen = ({ navigation }: Props) => {
               label="Personal Information" 
               onPress={() => navigation.navigate('PersonalInformation')} 
             />
-            <SettingItem icon="shield-checkmark-outline"   label="Security" />
+            <SettingItem icon="shield-checkmark-outline" label="Security" onPress={() => navigation.navigate('Security')} />
             <SettingItem icon="notifications-outline"      label="Notification Preferences" />
             <SettingItem icon="globe-outline"              label="Language" rightText="English" />
             <SettingItem icon="help-circle-outline"        label="Help & Support" />
