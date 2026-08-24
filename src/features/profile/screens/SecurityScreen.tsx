@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   ScrollView,
   Alert,
@@ -13,6 +12,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../shared/store/authStore';
 import { reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
@@ -220,24 +220,23 @@ export default function SecurityScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#F9FAFB' },
+  safe: { flex: 1, backgroundColor: '#FAFAFA' },
 
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingTop: 10,
+    paddingBottom: 15,
+    backgroundColor: '#FAFAFA',
   },
   backBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#F3F4F6',
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: '#E5E7EB',
     justifyContent: 'center', alignItems: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#0D4722' },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 20, paddingBottom: 60 },
