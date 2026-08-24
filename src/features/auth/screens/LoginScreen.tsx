@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../../shared/store/authStore';
 
 interface Props {
@@ -44,6 +45,8 @@ export default function LoginScreen({ navigation }: Props) {
       // Error is handled by the store
     }
   };
+
+
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -79,92 +82,78 @@ export default function LoginScreen({ navigation }: Props) {
           {/* ─── CARD (slides up and overlaps image) ─── */}
           <View style={styles.cardContainer}>
             <View style={styles.card}>
-            <Text style={styles.cardTitle}>Welcome Back</Text>
-            <Text style={styles.cardSubtitle}>Login to continue your journey.</Text>
+              <Text style={styles.cardTitle}>Welcome Back</Text>
+              <Text style={styles.cardSubtitle}>Login to continue your journey.</Text>
 
-            {/* Email Field */}
-            <View style={[styles.inputWrap, focusedField === 'email' && styles.inputFocused]}>
-              <Ionicons name="mail-outline" size={20} color={focusedField === 'email' ? '#0D4722' : '#9CA3AF'} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email or Phone Number"
-                placeholderTextColor="#9CA3AF"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={email}
-                onChangeText={setEmail}
-                onFocus={() => setFocusedField('email')}
-                onBlur={() => setFocusedField(null)}
-              />
-            </View>
+              {/* Email Field */}
+              <View style={[styles.inputWrap, focusedField === 'email' && styles.inputFocused]}>
+                <Ionicons name="mail-outline" size={20} color={focusedField === 'email' ? '#0D4722' : '#9CA3AF'} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email or Phone Number"
+                  placeholderTextColor="#9CA3AF"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setFocusedField('email')}
+                  onBlur={() => setFocusedField(null)}
+                />
+              </View>
 
-            {/* Password Field */}
-            <View style={[styles.inputWrap, styles.inputWrapMt, focusedField === 'password' && styles.inputFocused]}>
-              <Ionicons name="lock-closed-outline" size={20} color={focusedField === 'password' ? '#0D4722' : '#9CA3AF'} style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                placeholderTextColor="#9CA3AF"
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={setPassword}
-                onFocus={() => setFocusedField('password')}
-                onBlur={() => setFocusedField(null)}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
-                <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#9CA3AF" style={styles.eyeIcon} />
+              {/* Password Field */}
+              <View style={[styles.inputWrap, styles.inputWrapMt, focusedField === 'password' && styles.inputFocused]}>
+                <Ionicons name="lock-closed-outline" size={20} color={focusedField === 'password' ? '#0D4722' : '#9CA3AF'} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor="#9CA3AF"
+                  secureTextEntry={!showPassword}
+                  value={password}
+                  onChangeText={setPassword}
+                  onFocus={() => setFocusedField('password')}
+                  onBlur={() => setFocusedField(null)}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeBtn}>
+                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color="#9CA3AF" style={styles.eyeIcon} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Forgot Password */}
+              <TouchableOpacity
+                style={styles.forgotContainer}
+                onPress={() => navigation.navigate('ForgotPassword')}
+              >
+                <Text style={styles.forgotText}>Forgot Password?</Text>
               </TouchableOpacity>
-            </View>
 
-            {/* Forgot Password */}
-            <TouchableOpacity style={styles.forgotContainer}>
-              <Text style={styles.forgotText}>Forgot Password?</Text>
-            </TouchableOpacity>
+              {/* Error */}
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-            {/* Error */}
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            {/* Login Button */}
-            <TouchableOpacity
-              style={[styles.primaryBtn, isLoading && { opacity: 0.7 }]}
-              activeOpacity={0.85}
-              onPress={handleLogin}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.primaryBtnText}>Log In</Text>
-              )}
-            </TouchableOpacity>
-
-            {/* Divider */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or continue with</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Social Buttons */}
-            <View style={styles.socialRow}>
-              <TouchableOpacity style={styles.socialBtn} activeOpacity={0.85}>
-                <FontAwesome5 name="google" size={18} color="#4285F4" style={styles.socialIcon} />
-                <Text style={styles.socialBtnText}>Google</Text>
+              {/* Login Button */}
+              <TouchableOpacity
+                style={[styles.primaryBtn, isLoading && { opacity: 0.7 }]}
+                activeOpacity={0.85}
+                onPress={handleLogin}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Text style={styles.primaryBtnText}>Log In</Text>
+                )}
               </TouchableOpacity>
-              <TouchableOpacity style={styles.socialBtn} activeOpacity={0.85}>
-                <FontAwesome5 name="apple" size={20} color="#000000" style={styles.socialIcon} />
-                <Text style={styles.socialBtnText}>Apple</Text>
-              </TouchableOpacity>
-            </View>
 
-            {/* Sign Up Link */}
-            <View style={styles.switchRow}>
-              <Text style={styles.switchText}>Don't have an account? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                <Text style={styles.switchLink}>Sign Up</Text>
-              </TouchableOpacity>
+
+
+              {/* Sign Up Link */}
+              <View style={styles.switchRow}>
+                <Text style={styles.switchText}>Don't have an account? </Text>
+                <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                  <Text style={styles.switchLink}>Sign Up</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

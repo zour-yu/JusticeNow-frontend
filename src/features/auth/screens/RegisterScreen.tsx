@@ -45,6 +45,33 @@ export default function RegisterScreen({ navigation }: Props) {
       Alert.alert('Error', 'Please fill in all fields');
       return;
     }
+    
+    // Name Validation (at least 2 characters)
+    if (firstName.trim().length < 2 || lastName.trim().length < 2) {
+      Alert.alert('Error', 'First and Last name must be at least 2 characters long');
+      return;
+    }
+
+    // Email Validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address');
+      return;
+    }
+
+    // Phone Validation (digits only, max 10)
+    const phoneRegex = /^[0-9]{1,10}$/;
+    if (!phoneRegex.test(phone)) {
+      Alert.alert('Error', 'Phone number should only contain digits and be up to 10 characters long');
+      return;
+    }
+
+    // Password Validation (min 6 characters)
+    if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 6 characters long');
+      return;
+    }
+
     if (password !== confirmPassword) {
       Alert.alert('Error', 'Passwords do not match');
       return;
@@ -73,6 +100,8 @@ export default function RegisterScreen({ navigation }: Props) {
       // Error is handled by the store and displayed in UI
     }
   };
+
+
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -258,6 +287,8 @@ export default function RegisterScreen({ navigation }: Props) {
                   </Text>
                 )}
               </TouchableOpacity>
+
+
 
               {/* Switch Link */}
               <View style={styles.switchRow}>
@@ -457,6 +488,48 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+
+  /* ── Divider ── */
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 22,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginHorizontal: 12,
+  },
+
+  /* ── Social ── */
+  socialRow: {
+    flexDirection: 'row',
+    gap: 14,
+  },
+  socialBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  socialIcon: {
+    marginRight: 8,
+  },
+  socialBtnText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#374151',
   },
 
   /* ── Checkbox ── */

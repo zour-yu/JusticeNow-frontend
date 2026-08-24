@@ -2,7 +2,11 @@ import { create } from 'zustand';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
-  signOut
+  signOut,
+  sendPasswordResetEmail,
+  updatePassword,
+  reauthenticateWithCredential,
+  EmailAuthProvider
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import api from '../services/api';
@@ -28,6 +32,9 @@ interface AuthState {
   login: (email: string, password: string) => Promise<User>;
   register: (data: any) => Promise<User>;
   logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  changePassword: (currentPass: string, newPass: string) => Promise<void>;
+  updateProfile: (data: Partial<User>) => Promise<User>;
   clearError: () => void;
 }
 
@@ -103,6 +110,54 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user: null, isLoading: false });
     } catch (error: any) {
       set({ error: error.message, isLoading: false });
+    }
+  },
+
+  resetPassword: async (email: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      await sendPasswordResetEmail(auth, email);
+      set({ isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
+  changePassword: async (currentPass: string, newPass: string) => {
+    set({ isLoading: true, error: null });
+    try {
+      const user = auth.currentUser;
+      if (!user || !user.email) throw new Error("No authenticated user found");
+      
+      const credential = EmailAuthProvider.credential(user.email, currentPass);
+      await reauthenticateWithCredential(user, credential);
+      await updatePassword(user, newPass);
+      
+      set({ isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message, isLoading: false });
+      throw error;
+    }
+  },
+
+  updateProfile: async (data) => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.put('/auth/profile', data);
+      const updatedUser = response.data.data;
+      set((state) => ({
+        user: state.user ? { ...state.user, ...updatedUser } : updatedUser,
+        isLoading: false
+      }));
+      return updatedUser;
+    } catch (error: any) {
+      console.error('Update Profile Error:', error.response?.data || error.message);
+      set({ 
+        error: error.response?.data?.message || error.message || 'Failed to update profile', 
+        isLoading: false 
+      });
+      throw error;
     }
   },
 
