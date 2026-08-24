@@ -84,12 +84,12 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
               style={[
                 styles.card,
                 isSelected && styles.cardSelected,
-                isSelected && { borderColor: '#3B82F6', backgroundColor: '#EFF6FF' },
+                isSelected && { borderColor: '#0D4722', backgroundColor: '#F0FBF4' },
               ]}
               onPress={() => onSelectCategory(cat.key)}
               activeOpacity={0.7}
             >
-              <View style={styles.iconContainer}>
+              <View style={[styles.iconContainer, isSelected && { backgroundColor: '#E8F5E9' }]}>
                 <Text style={styles.icon}>{cat.icon}</Text>
               </View>
               <View style={styles.textContainer}>
@@ -113,12 +113,12 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 12,
+    marginVertical: 4,
   },
   title: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '800',
+    color: '#111827',
     marginBottom: 4,
   },
   required: {
@@ -126,8 +126,8 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 13,
-    color: '#64748B',
-    marginBottom: 12,
+    color: '#6B7280',
+    marginBottom: 14,
   },
   grid: {
     gap: 10,
@@ -139,21 +139,21 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
     elevation: 1,
   },
   cardSelected: {
-    borderWidth: 2,
+    borderWidth: 1.5,
   },
   iconContainer: {
     width: 44,
     height: 44,
     borderRadius: 12,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FAFAFA',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -166,17 +166,17 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#1E293B',
+    fontWeight: '700',
+    color: '#111827',
     marginBottom: 2,
   },
   labelSelected: {
-    color: '#1D4ED8',
-    fontWeight: '700',
+    color: '#0D4722',
+    fontWeight: '800',
   },
   description: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#6B7280',
     lineHeight: 16,
   },
   radioCircle: {
@@ -184,18 +184,18 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: '#CBD5E1',
+    borderColor: '#D1D5DB',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
   },
   radioCircleActive: {
-    borderColor: '#2563EB',
+    borderColor: '#0D4722',
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#2563EB',
+    backgroundColor: '#0D4722',
   },
 });
