@@ -12,6 +12,8 @@ import {
 } from 'react-native';
 import { useAuthStore } from '../../../shared/store/authStore';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { InvestigatorDashboard } from '../components/InvestigatorDashboard';
+import { AdminDashboard } from '../components/AdminDashboard';
 
 interface Props {
   navigation: any;
@@ -29,6 +31,40 @@ export default function HomeScreen({ navigation }: Props) {
 
   const isAdmin = user?.role === 'ADMIN';
   const isInvestigator = user?.role === 'INVESTIGATOR';
+
+  if (isAdmin) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <AdminDashboard user={user} navigation={navigation} />
+      </SafeAreaView>
+    );
+  }
+
+  if (isInvestigator) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.headerIconBtn} 
+            onPress={() => navigation.navigate('Profile')}
+          >
+            <Ionicons name="shield-checkmark" size={26} color="#0D4722" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Justice Now</Text>
+          <TouchableOpacity 
+            style={styles.headerIconBtn}
+            onPress={() => navigation.navigate('AssignedCases')}
+          >
+            <Ionicons name="briefcase-outline" size={26} color="#0D4722" />
+            <View style={[styles.adminBadge, { backgroundColor: '#0D4722' }]}>
+              <Text style={styles.adminBadgeText}>INV</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+        <InvestigatorDashboard user={user} navigation={navigation} />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>

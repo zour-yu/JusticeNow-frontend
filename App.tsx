@@ -16,6 +16,7 @@ import { AdminComplaintReviewScreen } from './src/features/admin/screens/AdminCo
 import { AdminCategorizationListScreen } from './src/features/admin/screens/AdminCategorizationListScreen';
 import { AdminCategorizationDetailScreen } from './src/features/admin/screens/AdminCategorizationDetailScreen';
 import { AdminAssignInvestigatorScreen } from './src/features/admin/screens/AdminAssignInvestigatorScreen';
+import { AdminInvestigatorApprovalScreen } from './src/features/admin/screens/AdminInvestigatorApprovalScreen';
 import { AssignedCasesScreen } from './src/features/cases/screens/AssignedCasesScreen';
 import { CaseDetailScreen } from './src/features/cases/screens/CaseDetailScreen';
 import SecurityScreen from './src/features/profile/screens/SecurityScreen';
@@ -43,6 +44,7 @@ export default function App() {
         <Stack.Screen name="AdminCategorizationList" component={AdminCategorizationListScreen} />
         <Stack.Screen name="AdminCategorizationDetail" component={AdminCategorizationDetailScreen} />
         <Stack.Screen name="AdminAssignInvestigator" component={AdminAssignInvestigatorScreen} />
+        <Stack.Screen name="AdminInvestigatorApproval" component={AdminInvestigatorApprovalScreen} />
         <Stack.Screen name="Security" component={SecurityScreen} />
       </Stack.Navigator>
     </NavigationContainer>
