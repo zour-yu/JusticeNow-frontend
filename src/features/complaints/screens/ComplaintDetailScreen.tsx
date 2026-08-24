@@ -5,9 +5,11 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   StyleSheet,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { Complaint, ComplaintStatus } from '../../../shared/types/complaint.types';
 import { ComplaintService } from '../../../shared/services/complaint.service';
 import { StatusBadge } from '../components/StatusBadge';
@@ -42,27 +44,32 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
 
   if (isLoading) {
     return (
-      <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#3B82F6" />
-        <Text style={styles.loadingText}>Loading complaint details...</Text>
-      </View>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color="#0D4722" />
+          <Text style={styles.loadingText}>Loading case details...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
   if (!complaint) {
     return (
-      <View style={styles.centerContainer}>
-        <Text style={styles.errorTitle}>Complaint Not Found</Text>
-        <Text style={styles.errorSubtitle}>
-          The requested complaint could not be retrieved.
-        </Text>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.centerContainer}>
+          <Ionicons name="alert-circle-outline" size={48} color="#EF4444" style={{ marginBottom: 12 }} />
+          <Text style={styles.errorTitle}>Case Not Found</Text>
+          <Text style={styles.errorSubtitle}>
+            The requested case details could not be retrieved.
+          </Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -70,9 +77,9 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
   const formattedDate = new Date(complaint.incidentDate).toLocaleDateString(
     'en-US',
     {
-      weekday: 'long',
+      weekday: 'short',
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
     }
   );
@@ -95,18 +102,20 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
   const currentStage = getStageIndex(complaint.status);
 
   return (
-    <View style={styles.screenContainer}>
+    <SafeAreaView style={styles.safe}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+
       {/* Top Bar */}
       <View style={styles.topBar}>
         <TouchableOpacity
           style={styles.navBackBtn}
           onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.navBackIcon}>←</Text>
-          <Text style={styles.navBackText}>Back</Text>
+          <Ionicons name="arrow-back" size={24} color="#0D4722" />
         </TouchableOpacity>
-        <Text style={styles.topBarTitle}>Complaint Tracking</Text>
-        <View style={{ width: 60 }} />
+        <Text style={styles.topBarTitle}>Case Tracking</Text>
+        <View style={{ width: 24 }} />
       </View>
 
       <ScrollView
@@ -114,7 +123,7 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Tracking Header Banner */}
+        {/* Tracking Header Banner (Rich Forest Green Card) */}
         <View style={styles.trackingBanner}>
           <View style={styles.trackingHeaderTop}>
             <View>
@@ -131,7 +140,7 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
                 { label: 'Submitted', stage: 1 },
                 { label: 'Review', stage: 2 },
                 { label: 'Approved', stage: 3 },
-                { label: 'Case Inv.', stage: 4 },
+                { label: 'Investigation', stage: 4 },
               ].map((step, index) => {
                 const isCompleted = currentStage >= step.stage;
                 const isCurrent = currentStage === step.stage;
@@ -145,20 +154,20 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
                         isCurrent && styles.stepCircleCurrent,
                       ]}
                     >
-                      <Text
-                        style={[
-                          styles.stepNumber,
-                          isCompleted && styles.stepNumberCompleted,
-                        ]}
-                      >
-                        {isCompleted && currentStage > step.stage ? '✓' : step.stage}
-                      </Text>
+                      {isCompleted && currentStage > step.stage ? (
+                        <Ionicons name="checkmark" size={14} color="#0D4722" />
+                      ) : isCurrent ? (
+                        <Ionicons name="search" size={12} color="#0D4722" />
+                      ) : (
+                        <Text style={styles.stepNumber}>{step.stage}</Text>
+                      )}
                     </View>
                     <Text
                       style={[
                         styles.stepLabel,
                         isCompleted && styles.stepLabelCompleted,
                       ]}
+                      numberOfLines={1}
                     >
                       {step.label}
                     </Text>
@@ -178,7 +187,7 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
             </Text>
             {complaint.isAnonymous && (
               <View style={styles.anonBadge}>
-                <Text style={styles.anonText}>Anonymous Report</Text>
+                <Text style={styles.anonText}>Anonymous</Text>
               </View>
             )}
           </View>
@@ -195,14 +204,14 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
             <View style={styles.metaItem}>
               <Text style={styles.metaLabel}>City / Location</Text>
               <Text style={styles.metaValue}>
-                {complaint.incidentLocation?.city}
+                {complaint.incidentLocation?.city || 'Not specified'}
               </Text>
             </View>
 
             <View style={[styles.metaItem, { width: '100%' }]}>
               <Text style={styles.metaLabel}>Specific Address</Text>
               <Text style={styles.metaValue}>
-                {complaint.incidentLocation?.address}
+                {complaint.incidentLocation?.address || 'Not specified'}
               </Text>
             </View>
           </View>
@@ -236,9 +245,10 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
                       {item.name}
                     </Text>
                     <Text style={styles.evidenceSub}>
-                      {item.type.toUpperCase()} • Attached with complaint
+                      {item.type.toUpperCase()} • Attached with case
                     </Text>
                   </View>
+                  <Ionicons name="checkmark-circle" size={18} color="#0D4722" />
                 </View>
               ))}
             </View>
@@ -259,93 +269,86 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
           <TimelineView timeline={complaint.statusTimeline || []} />
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  screenContainer: {
+  safe: {
     flex: 1,
-    backgroundColor: '#0B132B',
+    backgroundColor: '#FAFAFA',
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#1C2541',
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    backgroundColor: '#FAFAFA',
+    paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#3A506B',
+    borderBottomColor: '#F3F4F6',
   },
   navBackBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 6,
-  },
-  navBackIcon: {
-    fontSize: 20,
-    color: '#60A5FA',
-    marginRight: 4,
-  },
-  navBackText: {
-    fontSize: 14,
-    color: '#60A5FA',
-    fontWeight: '700',
+    padding: 4,
   },
   topBarTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0D4722',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
+    padding: 20,
     paddingBottom: 40,
   },
   centerContainer: {
     flex: 1,
-    backgroundColor: '#0B132B',
+    backgroundColor: '#FAFAFA',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   loadingText: {
-    color: '#94A3B8',
+    color: '#6B7280',
     fontSize: 14,
     marginTop: 12,
   },
   errorTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: '800',
+    color: '#111827',
     marginBottom: 6,
   },
   errorSubtitle: {
     fontSize: 14,
-    color: '#94A3B8',
-    marginBottom: 16,
+    color: '#6B7280',
+    marginBottom: 18,
+    textAlign: 'center',
   },
   backButton: {
-    backgroundColor: '#2563EB',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 8,
+    backgroundColor: '#0D4722',
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 10,
   },
   backButtonText: {
     color: '#FFFFFF',
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize: 14,
   },
   trackingBanner: {
-    backgroundColor: '#1C2541',
-    borderRadius: 16,
-    padding: 18,
+    backgroundColor: '#0D4722',
+    borderRadius: 20,
+    padding: 20,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#3A506B',
+    shadowColor: '#0D4722',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   trackingHeaderTop: {
     flexDirection: 'row',
@@ -356,7 +359,7 @@ const styles = StyleSheet.create({
   trackingTag: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#60A5FA',
+    color: '#A7F3D0',
     letterSpacing: 1,
     marginBottom: 4,
   },
@@ -367,10 +370,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   stepperContainer: {
-    marginTop: 8,
+    marginTop: 6,
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: '#3A506B',
+    borderTopColor: 'rgba(255, 255, 255, 0.15)',
   },
   stepperRow: {
     flexDirection: 'row',
@@ -381,50 +384,50 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stepCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#0B132B',
-    borderWidth: 2,
-    borderColor: '#3A506B',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
   stepCircleCompleted: {
-    backgroundColor: '#10B981',
-    borderColor: '#10B981',
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
   },
   stepCircleCurrent: {
-    backgroundColor: '#2563EB',
-    borderColor: '#60A5FA',
+    backgroundColor: '#A7F3D0',
+    borderColor: '#A7F3D0',
   },
   stepNumber: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    color: '#94A3B8',
-  },
-  stepNumberCompleted: {
-    color: '#FFFFFF',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
   stepLabel: {
     fontSize: 10,
-    color: '#94A3B8',
+    color: 'rgba(255, 255, 255, 0.65)',
     fontWeight: '600',
     textAlign: 'center',
   },
   stepLabelCompleted: {
-    color: '#E2E8F0',
+    color: '#FFFFFF',
+    fontWeight: '700',
   },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 18,
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
     elevation: 2,
   },
   categoryRow: {
@@ -433,13 +436,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   categoryIcon: {
-    fontSize: 18,
+    fontSize: 16,
     marginRight: 6,
   },
   categoryName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#2563EB',
+    color: '#0D4722',
   },
   anonBadge: {
     backgroundColor: '#F3E8FF',
@@ -454,19 +457,21 @@ const styles = StyleSheet.create({
     color: '#7E22CE',
   },
   complaintTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#111827',
     marginBottom: 14,
-    lineHeight: 26,
+    lineHeight: 24,
   },
   metaGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    backgroundColor: '#F8FAFC',
-    padding: 12,
+    backgroundColor: '#FAFAFA',
+    padding: 14,
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
   metaItem: {
     width: '47%',
@@ -474,47 +479,47 @@ const styles = StyleSheet.create({
   metaLabel: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#64748B',
+    color: '#6B7280',
     marginBottom: 2,
   },
   metaValue: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#1E293B',
+    fontWeight: '700',
+    color: '#111827',
   },
   cardSectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#0F172A',
+    fontWeight: '800',
+    color: '#111827',
     marginBottom: 6,
   },
   cardSectionSubtitle: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#6B7280',
     marginBottom: 12,
   },
   descriptionText: {
     fontSize: 14,
-    color: '#334155',
+    color: '#374151',
     lineHeight: 22,
   },
   witnessBox: {
     marginTop: 14,
-    backgroundColor: '#F1F5F9',
-    padding: 12,
+    backgroundColor: '#F0FBF4',
+    padding: 14,
     borderRadius: 10,
     borderLeftWidth: 4,
-    borderLeftColor: '#3B82F6',
+    borderLeftColor: '#0D4722',
   },
   witnessTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#1E293B',
+    color: '#0D4722',
     marginBottom: 4,
   },
   witnessText: {
     fontSize: 13,
-    color: '#475569',
+    color: '#374151',
   },
   evidenceList: {
     gap: 8,
@@ -523,14 +528,14 @@ const styles = StyleSheet.create({
   evidenceItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    padding: 10,
+    backgroundColor: '#FAFAFA',
+    padding: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
   },
   evidenceIcon: {
-    fontSize: 20,
+    fontSize: 18,
     marginRight: 10,
   },
   evidenceDetails: {
@@ -538,18 +543,19 @@ const styles = StyleSheet.create({
   },
   evidenceName: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#1E293B',
+    fontWeight: '700',
+    color: '#111827',
   },
   evidenceSub: {
     fontSize: 11,
-    color: '#64748B',
+    color: '#6B7280',
     marginTop: 2,
   },
   noEvidenceText: {
     fontSize: 13,
-    color: '#94A3B8',
+    color: '#9CA3AF',
     fontStyle: 'italic',
     marginTop: 4,
   },
 });
+
