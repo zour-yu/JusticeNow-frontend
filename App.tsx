@@ -17,6 +17,7 @@ import { AdminComplaintReviewScreen } from './src/features/admin/screens/AdminCo
 import { AdminCategorizationListScreen } from './src/features/admin/screens/AdminCategorizationListScreen';
 import { AdminCategorizationDetailScreen } from './src/features/admin/screens/AdminCategorizationDetailScreen';
 import { AdminAssignInvestigatorScreen } from './src/features/admin/screens/AdminAssignInvestigatorScreen';
+import { AdminInvestigatorApprovalScreen } from './src/features/admin/screens/AdminInvestigatorApprovalScreen';
 import { AssignedCasesScreen } from './src/features/cases/screens/AssignedCasesScreen';
 import { CaseDetailScreen } from './src/features/cases/screens/CaseDetailScreen';
 import SecurityScreen from './src/features/profile/screens/SecurityScreen';

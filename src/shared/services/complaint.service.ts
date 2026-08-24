@@ -270,6 +270,23 @@ export const ComplaintService = {
     return complaint;
   },
 
+  async getAllComplaints(status?: ComplaintStatus): Promise<Complaint[]> {
+    try {
+      const url = status ? `/complaints/all?status=${status}` : '/complaints/all';
+      const response = await api.get(url);
+      if (response.data && response.data.data) {
+        return response.data.data;
+      }
+    } catch (err) {
+      console.log('Loading all complaints from local store:', err);
+    }
+
+    if (status) {
+      return localComplaintsStore.filter((c) => c.status === status);
+    }
+    return [...localComplaintsStore];
+  },
+
   async getComplaintsByStatus(status: ComplaintStatus): Promise<Complaint[]> {
     try {
       const response = await api.get(`/complaints/all?status=${status}`);

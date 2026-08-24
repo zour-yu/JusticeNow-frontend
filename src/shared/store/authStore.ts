@@ -35,6 +35,7 @@ interface AuthState {
   resetPassword: (email: string) => Promise<void>;
   changePassword: (currentPass: string, newPass: string) => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<User>;
+  completeGoogleRegistration: (phone: string, role: 'CITIZEN' | 'INVESTIGATOR') => Promise<User>;
   clearError: () => void;
 }
 
@@ -156,6 +157,26 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ 
         error: error.response?.data?.message || error.message || 'Failed to update profile', 
         isLoading: false 
+      });
+      throw error;
+    }
+  },
+
+  completeGoogleRegistration: async (phone: string, role: 'CITIZEN' | 'INVESTIGATOR') => {
+    set({ isLoading: true, error: null });
+    try {
+      const response = await api.post('/auth/sync', {
+        phone,
+        role,
+      });
+      const user = response.data.data;
+      set({ user, isLoading: false });
+      return user;
+    } catch (error: any) {
+      console.error('Complete Profile Error:', error.response?.data || error.message);
+      set({
+        error: error.response?.data?.message || error.message || 'Failed to complete profile',
+        isLoading: false,
       });
       throw error;
     }

@@ -414,11 +414,109 @@ const INITIAL_MOCK_CASES: Case[] = [
     createdAt: '2026-08-18T10:00:00.000Z',
     updatedAt: '2026-08-18T10:00:00.000Z',
   },
+  {
+    _id: 'case-005',
+    caseNumber: 'CASE-2026-901234',
+    complaintId: 'JN-2026-901234',
+    title: 'Bribery & Extortion at Land Registry Office',
+    description: 'Public official demanded illegal cash payment to release rightful property deed.',
+    category: ComplaintCategory.OTHER,
+    priority: CasePriority.HIGH,
+    status: CaseStatus.ASSIGNED,
+    assignedInvestigatorId: '',
+    assignedInvestigatorName: '',
+    assignedInvestigatorEmail: '',
+    assignedBy: 'Administrator',
+    assignedAt: '2026-08-20T11:00:00.000Z',
+    complaintDetails: {
+      trackingNumber: 'JN-2026-901234',
+      citizenName: 'Sunil Weerasinghe',
+      citizenEmail: 'sunil.w@example.com',
+      citizenPhone: '+94 71 555 1234',
+      isAnonymous: false,
+      incidentDate: '2026-08-19T10:30:00.000Z',
+      incidentLocation: {
+        city: 'Galle',
+        address: 'District Land Registry, Fort Gate',
+      },
+      description: 'Official refused registration stamps unless Rs. 50,000 cash bribe was handed over.',
+    },
+    evidence: [],
+    investigationNotes: [],
+    statusTimeline: [
+      {
+        status: CaseStatus.ASSIGNED,
+        title: 'Complaint Approved - Awaiting Investigator Assignment',
+        note: 'Approved by Admin. Ready for investigator assignment.',
+        updatedBy: 'Admin Vance',
+        timestamp: '2026-08-20T11:00:00.000Z',
+      },
+    ],
+    createdAt: '2026-08-20T11:00:00.000Z',
+    updatedAt: '2026-08-20T11:00:00.000Z',
+  },
+  {
+    _id: 'case-006',
+    caseNumber: 'CASE-2026-112233',
+    complaintId: 'JN-2026-112233',
+    title: 'Illegal Environmental Dumping in Forest Reserve',
+    description: 'Commercial entity discharging untreated toxic effluent into public water stream.',
+    category: ComplaintCategory.OTHER,
+    priority: CasePriority.URGENT,
+    status: CaseStatus.ASSIGNED,
+    assignedInvestigatorId: '',
+    assignedInvestigatorName: '',
+    assignedInvestigatorEmail: '',
+    assignedBy: 'Administrator',
+    assignedAt: '2026-08-22T08:00:00.000Z',
+    complaintDetails: {
+      trackingNumber: 'JN-2026-112233',
+      citizenName: 'Anonymous Citizen',
+      isAnonymous: true,
+      incidentDate: '2026-08-21T16:00:00.000Z',
+      incidentLocation: {
+        city: 'Ratnapura',
+        address: 'Sinharaja Buffer Border',
+      },
+      description: 'Trucks dumping chemical barrels into water stream near village.',
+    },
+    evidence: [],
+    investigationNotes: [],
+    statusTimeline: [
+      {
+        status: CaseStatus.ASSIGNED,
+        title: 'Complaint Approved - Awaiting Investigator Assignment',
+        note: 'High urgency environmental case approved.',
+        updatedBy: 'Admin Vance',
+        timestamp: '2026-08-22T08:00:00.000Z',
+      },
+    ],
+    createdAt: '2026-08-22T08:00:00.000Z',
+    updatedAt: '2026-08-22T08:00:00.000Z',
+  },
 ];
 
 let localCasesStore: Case[] = [...INITIAL_MOCK_CASES];
 
 export const CaseService = {
+  async getAllCases(status?: CaseStatus): Promise<Case[]> {
+    try {
+      const url = status ? `/cases/all?status=${status}` : '/cases/all';
+      const response = await api.get(url);
+      if (response.data && response.data.data) {
+        return response.data.data;
+      }
+    } catch (err) {
+      console.log('Loading all cases from backend failed, using mock store:', err);
+    }
+
+    let filtered = [...localCasesStore];
+    if (status) {
+      filtered = filtered.filter((c) => c.status === status);
+    }
+    return filtered;
+  },
+
   async getAssignedCases(status?: CaseStatus): Promise<Case[]> {
     try {
       const url = status ? `/cases/assigned?status=${status}` : '/cases/assigned';

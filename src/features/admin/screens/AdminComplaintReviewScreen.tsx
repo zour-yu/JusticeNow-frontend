@@ -14,10 +14,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Complaint, ComplaintStatus } from '../../../shared/types/complaint.types';
 import { ComplaintService } from '../../../shared/services/complaint.service';
+import { CaseService } from '../../../shared/services/case.service';
+import { AssignInvestigatorInput } from '../../../shared/types/case.types';
 import { StatusBadge } from '../../complaints/components/StatusBadge';
 import { CATEGORIES } from '../../complaints/components/CategorySelector';
 import { TimelineView } from '../../complaints/components/TimelineView';
 import { ReviewDecisionCard } from '../components/ReviewDecisionCard';
+import { InvestigatorSelectorModal } from '../components/InvestigatorSelectorModal';
 
 interface Props {
   route: any;
@@ -30,6 +33,7 @@ export const AdminComplaintReviewScreen: React.FC<Props> = ({ route, navigation 
   const [isLoading, setIsLoading] = useState(!initialComplaint);
   const [isReviewMode, setIsReviewMode] = useState(false);
   const [reviewSubmitted, setReviewSubmitted] = useState(false);
+  const [assignModalVisible, setAssignModalVisible] = useState(false);
 
   useEffect(() => {
     const fetchDetail = async () => {
@@ -60,15 +64,53 @@ export const AdminComplaintReviewScreen: React.FC<Props> = ({ route, navigation 
         note
       );
       setReviewSubmitted(true);
-      Alert.alert('Success', 'Complaint approved successfully!', [
-        {
-          text: 'Back to List',
-          onPress: () => navigation.navigate('AdminComplaintsList'),
-        },
-      ]);
+      setComplaint((prev) =>
+        prev
+          ? {
+              ...prev,
+              status: ComplaintStatus.APPROVED,
+            }
+          : null
+      );
+
+      Alert.alert(
+        'Complaint Approved',
+        'The complaint has been approved. Would you like to assign an investigator to this case now?',
+        [
+          {
+            text: 'Assign Investigator Now',
+            onPress: () => setAssignModalVisible(true),
+          },
+          {
+            text: 'Done / Back to List',
+            onPress: () => navigation.navigate('AdminComplaintsList'),
+            style: 'cancel',
+          },
+        ]
+      );
     } catch (err) {
       throw err;
     }
+  };
+
+  const handleAssignInvestigator = async (input: AssignInvestigatorInput) => {
+    if (!complaint) return;
+    const identifier = complaint.trackingNumber || complaint._id || '';
+    const newCase = await CaseService.assignComplaintToInvestigator(
+      identifier,
+      input
+    );
+
+    setComplaint((prev) =>
+      prev
+        ? {
+            ...prev,
+            status: ComplaintStatus.CONVERTED_TO_CASE,
+            caseId: newCase.caseNumber,
+            assignedInvestigatorId: input.investigatorId,
+          }
+        : null
+    );
   };
 
   const handleReject = async (note: string) => {
@@ -383,15 +425,75 @@ export const AdminComplaintReviewScreen: React.FC<Props> = ({ route, navigation 
           </View>
         )}
 
-        {complaint.status !== ComplaintStatus.SUBMITTED && (
+        {/* Approved / Converted to Case Investigator Assignment Card */}
+        {(complaint.status === ComplaintStatus.APPROVED ||
+          complaint.status === ComplaintStatus.CONVERTED_TO_CASE) && (
+          <View style={styles.section}>
+            <View style={styles.assignCard}>
+              <View style={styles.assignCardHeader}>
+                <View style={styles.assignIconWrapper}>
+                  <Ionicons
+                    name={
+                      complaint.status === ComplaintStatus.CONVERTED_TO_CASE
+                        ? 'shield-checkmark'
+                        : 'person-add'
+                    }
+                    size={22}
+                    color="#0D4722"
+                  />
+                </View>
+                <View style={styles.assignCardTexts}>
+                  <Text style={styles.assignCardTitle}>
+                    {complaint.status === ComplaintStatus.CONVERTED_TO_CASE
+                      ? 'Investigation Active'
+                      : 'Ready for Investigator Assignment'}
+                  </Text>
+                  <Text style={styles.assignCardDesc}>
+                    {complaint.status === ComplaintStatus.CONVERTED_TO_CASE
+                      ? `Converted to formal case ref #${complaint.caseId || 'ACTIVE'}.`
+                      : 'Complaint is approved. Assign an investigator to initiate fieldwork.'}
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={styles.assignActionBtn}
+                onPress={() => setAssignModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="person-add" size={16} color="#FFFFFF" />
+                <Text style={styles.assignActionBtnText}>
+                  {complaint.status === ComplaintStatus.CONVERTED_TO_CASE
+                    ? 'Reassign Investigator'
+                    : 'Assign Investigator to Case'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Existing already reviewed info banner if rejected */}
+        {complaint.status === ComplaintStatus.REJECTED && (
           <View style={styles.alreadyReviewedMessage}>
-            <Ionicons name="information-circle-outline" size={20} color="#3B82F6" />
-            <Text style={styles.alreadyReviewedText}>
-              This complaint has already been reviewed with status: {complaint.status}
+            <Ionicons name="information-circle-outline" size={20} color="#EF4444" />
+            <Text style={[styles.alreadyReviewedText, { color: '#B91C1C' }]}>
+              This complaint was rejected during review.
             </Text>
           </View>
         )}
       </ScrollView>
+
+      {/* Investigator Selector Modal */}
+      {complaint && (
+        <InvestigatorSelectorModal
+          visible={assignModalVisible}
+          caseIdOrNumber={complaint.trackingNumber}
+          caseTitle={complaint.title}
+          currentInvestigatorId={complaint.assignedInvestigatorId}
+          onClose={() => setAssignModalVisible(false)}
+          onAssigned={handleAssignInvestigator}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -726,5 +828,60 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  /* Assignment Card Styles */
+  assignCard: {
+    backgroundColor: '#F0FDF4',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  assignCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 14,
+  },
+  assignIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#DCFCE7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  assignCardTexts: {
+    flex: 1,
+  },
+  assignCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0D4722',
+    marginBottom: 2,
+  },
+  assignCardDesc: {
+    fontSize: 12,
+    color: '#374151',
+    lineHeight: 17,
+  },
+  assignActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#0D4722',
+    paddingVertical: 12,
+    borderRadius: 10,
+  },
+  assignActionBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

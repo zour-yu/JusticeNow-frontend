@@ -50,7 +50,7 @@ export const AdminAssignInvestigatorScreen = ({ navigation }: any) => {
 
   const loadCases = useCallback(async () => {
     try {
-      const data = await CaseService.getAssignedCases();
+      const data = await CaseService.getAllCases();
       setCases(data);
     } catch (err) {
       console.log('Error loading cases for assignment:', err);
@@ -75,6 +75,10 @@ export const AdminAssignInvestigatorScreen = ({ navigation }: any) => {
     if (activeFilter === 'UNASSIGNED') {
       result = result.filter(
         (c) => !c.assignedInvestigatorId || c.assignedInvestigatorId === 'unassigned'
+      );
+    } else if (activeFilter === 'ASSIGNED') {
+      result = result.filter(
+        (c) => Boolean(c.assignedInvestigatorId && c.assignedInvestigatorId !== 'unassigned')
       );
     } else if (activeFilter !== 'ALL') {
       result = result.filter((c) => c.status === activeFilter);
@@ -125,9 +129,31 @@ export const AdminAssignInvestigatorScreen = ({ navigation }: any) => {
     (c) => !c.assignedInvestigatorId || c.assignedInvestigatorId === 'unassigned'
   ).length;
 
+  const totalAssigned = cases.filter(
+    (c) => Boolean(c.assignedInvestigatorId && c.assignedInvestigatorId !== 'unassigned')
+  ).length;
+
   const totalActive = cases.filter(
     (c) => c.status !== CaseStatus.RESOLVED && c.status !== CaseStatus.CLOSED
   ).length;
+
+  const filterTabs = [
+    { key: 'ALL', label: `All Cases (${cases.length})` },
+    { key: 'UNASSIGNED', label: `Needs Assignment (${totalUnassigned})` },
+    { key: 'ASSIGNED', label: `Already Assigned (${totalAssigned})` },
+    {
+      key: CaseStatus.UNDER_INVESTIGATION,
+      label: `In Fieldwork (${cases.filter((c) => c.status === CaseStatus.UNDER_INVESTIGATION).length})`,
+    },
+    {
+      key: CaseStatus.EVIDENCE_COLLECTION,
+      label: `Evidence Vault (${cases.filter((c) => c.status === CaseStatus.EVIDENCE_COLLECTION).length})`,
+    },
+    {
+      key: CaseStatus.RESOLVED,
+      label: `Resolved (${cases.filter((c) => c.status === CaseStatus.RESOLVED || c.status === CaseStatus.CLOSED).length})`,
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -168,9 +194,13 @@ export const AdminAssignInvestigatorScreen = ({ navigation }: any) => {
               </Text>
               <Text style={styles.metricLabel}>Unassigned</Text>
             </View>
+            <View style={[styles.metricCard, { backgroundColor: '#EFF6FF' }]}>
+              <Text style={[styles.metricVal, { color: '#1D4ED8' }]}>{totalAssigned}</Text>
+              <Text style={[styles.metricLabel, { color: '#1E40AF' }]}>Assigned</Text>
+            </View>
             <View style={[styles.metricCard, { backgroundColor: '#E8F5E9' }]}>
               <Text style={[styles.metricVal, { color: '#0D4722' }]}>{totalActive}</Text>
-              <Text style={[styles.metricLabel, { color: '#065F46' }]}>Active Fieldwork</Text>
+              <Text style={[styles.metricLabel, { color: '#065F46' }]}>Active Field</Text>
             </View>
           </View>
 
@@ -196,7 +226,7 @@ export const AdminAssignInvestigatorScreen = ({ navigation }: any) => {
             <FlatList
               horizontal
               showsHorizontalScrollIndicator={false}
-              data={FILTER_TABS}
+              data={filterTabs}
               keyExtractor={(item) => item.key}
               contentContainerStyle={styles.filterContainer}
               renderItem={({ item }) => {
