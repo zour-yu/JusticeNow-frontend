@@ -28,6 +28,7 @@ export default function HomeScreen({ navigation }: Props) {
   };
 
   const isAdmin = user?.role === 'ADMIN';
+  const isInvestigator = user?.role === 'INVESTIGATOR';
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -47,6 +48,8 @@ export default function HomeScreen({ navigation }: Props) {
           onPress={() => {
             if (isAdmin) {
               navigation.navigate('AdminComplaintsList');
+            } else if (isInvestigator) {
+              navigation.navigate('AssignedCases');
             }
           }}
         >
@@ -55,6 +58,13 @@ export default function HomeScreen({ navigation }: Props) {
               <Ionicons name="shield-checkmark-outline" size={26} color="#0D4722" />
               <View style={styles.adminBadge}>
                 <Text style={styles.adminBadgeText}>A</Text>
+              </View>
+            </>
+          ) : isInvestigator ? (
+            <>
+              <Ionicons name="briefcase-outline" size={26} color="#0D4722" />
+              <View style={[styles.adminBadge, { backgroundColor: '#0D4722' }]}>
+                <Text style={styles.adminBadgeText}>INV</Text>
               </View>
             </>
           ) : (
@@ -83,13 +93,13 @@ export default function HomeScreen({ navigation }: Props) {
           >
             <View style={styles.heroTextContainer}>
               <Text style={styles.heroTitle}>
-                {isAdmin ? 'Review Complaints,' : 'Speak Up Today,'}
+                {isInvestigator ? 'Investigate Cases,' : isAdmin ? 'Review Complaints,' : 'Speak Up Today,'}
               </Text>
               <Text style={styles.heroTitle}>
-                {isAdmin ? 'Ensure Justice.' : 'Create a Better Tomorrow.'}
+                {isInvestigator ? 'Uphold Justice.' : isAdmin ? 'Ensure Justice.' : 'Create a Better Tomorrow.'}
               </Text>
               <Text style={styles.heroSubtitle}>
-                {isAdmin ? 'Admin Dashboard.' : 'We\'re here to help.'}
+                {isInvestigator ? 'Investigator Workspace.' : isAdmin ? 'Admin Dashboard.' : 'We\'re here to help.'}
               </Text>
             </View>
           </ImageBackground>
@@ -98,22 +108,22 @@ export default function HomeScreen({ navigation }: Props) {
           <TouchableOpacity 
             style={styles.floatingActionCard}
             activeOpacity={0.8}
-            onPress={() => navigation.navigate(isAdmin ? 'AdminComplaintsList' : 'SubmitComplaint')}
+            onPress={() => navigation.navigate(isInvestigator ? 'AssignedCases' : isAdmin ? 'AdminComplaintsList' : 'SubmitComplaint')}
           >
             <View style={styles.floatingActionLeft}>
               <View style={styles.pencilIconWrapper}>
                 <Ionicons 
-                  name={isAdmin ? 'shield-checkmark-outline' : 'create-outline'} 
+                  name={isInvestigator ? 'briefcase-outline' : isAdmin ? 'shield-checkmark-outline' : 'create-outline'} 
                   size={20} 
                   color="#0D4722" 
                 />
               </View>
               <View style={styles.floatingActionTexts}>
                 <Text style={styles.floatingActionTitle}>
-                  {isAdmin ? 'Pending Complaints' : 'Submit a Complaint'}
+                  {isInvestigator ? 'Assigned Cases' : isAdmin ? 'Pending Complaints' : 'Submit a Complaint'}
                 </Text>
                 <Text style={styles.floatingActionDesc}>
-                  {isAdmin ? 'Review awaiting decisions.' : 'Your voice can bring change.'}
+                  {isInvestigator ? 'Manage and investigate active cases.' : isAdmin ? 'Review awaiting decisions.' : 'Your voice can bring change.'}
                 </Text>
               </View>
             </View>
@@ -123,8 +133,32 @@ export default function HomeScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        {/* TRACK YOUR CASE or ADMIN STATS */}
-        {!isAdmin && (
+        {/* INVESTIGATOR TOOLS */}
+        {isInvestigator && (
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Investigator Workspace</Text>
+          
+          {/* Assigned Cases Card */}
+          <TouchableOpacity 
+            style={styles.adminToolCard}
+            onPress={() => navigation.navigate('AssignedCases')}
+          >
+            <View style={[styles.adminToolIcon, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="folder-open-outline" size={24} color="#0D4722" />
+            </View>
+            <View style={styles.adminToolContent}>
+              <Text style={styles.adminToolTitle}>My Assigned Cases</Text>
+              <Text style={styles.adminToolDesc}>
+                Review complaint details, evidence, and update investigation progress
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+          </TouchableOpacity>
+        </View>
+        )}
+
+        {/* TRACK YOUR CASE or CITIZEN RECENT UPDATES */}
+        {!isAdmin && !isInvestigator && (
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Track Your Case</Text>
@@ -185,7 +219,7 @@ export default function HomeScreen({ navigation }: Props) {
         )}
 
         {/* RECENT UPDATES */}
-        {!isAdmin && (
+        {!isAdmin && !isInvestigator && (
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Updates</Text>
@@ -260,6 +294,23 @@ export default function HomeScreen({ navigation }: Props) {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
           </TouchableOpacity>
+
+          {/* Assign Investigators */}
+          <TouchableOpacity 
+            style={styles.adminToolCard}
+            onPress={() => navigation.navigate('AdminAssignInvestigator')}
+          >
+            <View style={[styles.adminToolIcon, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="person-add-outline" size={24} color="#0D4722" />
+            </View>
+            <View style={styles.adminToolContent}>
+              <Text style={styles.adminToolTitle}>Assign Investigators</Text>
+              <Text style={styles.adminToolDesc}>
+                Allocate cases and monitor investigator workloads
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+          </TouchableOpacity>
         </View>
         )}
         
@@ -274,18 +325,21 @@ export default function HomeScreen({ navigation }: Props) {
           <Text style={[styles.navText, { color: '#0D4722' }]}>Home</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('MyComplaints')}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate(isInvestigator ? 'AssignedCases' : 'MyComplaints')}
+        >
           <Ionicons name="folder-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>My Cases</Text>
+          <Text style={styles.navText}>{isInvestigator ? 'Assigned' : 'My Cases'}</Text>
         </TouchableOpacity>
 
         <View style={styles.fabContainer}>
           <TouchableOpacity 
             style={styles.fabBtn}
             activeOpacity={0.9}
-            onPress={() => navigation.navigate('SubmitComplaint')}
+            onPress={() => navigation.navigate(isInvestigator ? 'AssignedCases' : isAdmin ? 'AdminComplaintsList' : 'SubmitComplaint')}
           >
-            <Ionicons name="add" size={32} color="#FFF" />
+            <Ionicons name={isInvestigator ? 'briefcase' : 'add'} size={30} color="#FFF" />
           </TouchableOpacity>
         </View>
 

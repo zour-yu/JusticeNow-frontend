@@ -15,6 +15,9 @@ import { AdminComplaintsListScreen } from './src/features/admin/screens/AdminCom
 import { AdminComplaintReviewScreen } from './src/features/admin/screens/AdminComplaintReviewScreen';
 import { AdminCategorizationListScreen } from './src/features/admin/screens/AdminCategorizationListScreen';
 import { AdminCategorizationDetailScreen } from './src/features/admin/screens/AdminCategorizationDetailScreen';
+import { AdminAssignInvestigatorScreen } from './src/features/admin/screens/AdminAssignInvestigatorScreen';
+import { AssignedCasesScreen } from './src/features/cases/screens/AssignedCasesScreen';
+import { CaseDetailScreen } from './src/features/cases/screens/CaseDetailScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -30,12 +33,15 @@ export default function App() {
         <Stack.Screen name="SubmitComplaint" component={SubmitComplaintScreen} />
         <Stack.Screen name="MyComplaints" component={MyComplaintsScreen} />
         <Stack.Screen name="ComplaintDetail" component={ComplaintDetailScreen} />
+        <Stack.Screen name="AssignedCases" component={AssignedCasesScreen} />
+        <Stack.Screen name="CaseDetail" component={CaseDetailScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
         <Stack.Screen name="PersonalInformation" component={PersonalInformationScreen} />
         <Stack.Screen name="AdminComplaintsList" component={AdminComplaintsListScreen} />
         <Stack.Screen name="AdminComplaintReview" component={AdminComplaintReviewScreen} />
         <Stack.Screen name="AdminCategorizationList" component={AdminCategorizationListScreen} />
         <Stack.Screen name="AdminCategorizationDetail" component={AdminCategorizationDetailScreen} />
+        <Stack.Screen name="AdminAssignInvestigator" component={AdminAssignInvestigatorScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
