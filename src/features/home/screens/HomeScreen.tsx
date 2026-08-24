@@ -27,19 +27,44 @@ export default function HomeScreen({ navigation }: Props) {
     navigation.replace('Login');
   };
 
+  const isAdmin = user?.role === 'ADMIN';
+
   return (
     <SafeAreaView style={styles.safe}>
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerIconBtn} onPress={handleLogout}>
+        <TouchableOpacity 
+          style={styles.headerIconBtn} 
+          onPress={() => {
+            // Menu options
+          }}
+        >
           <Ionicons name="menu-outline" size={28} color="#0D4722" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Justice Now</Text>
-        <TouchableOpacity style={styles.headerIconBtn}>
-          <Ionicons name="notifications-outline" size={26} color="#0D4722" />
-          <View style={styles.notificationBadge}>
-            <Text style={styles.notificationBadgeText}>3</Text>
-          </View>
+        <TouchableOpacity 
+          style={styles.headerIconBtn}
+          onPress={() => {
+            if (isAdmin) {
+              navigation.navigate('AdminComplaintsList');
+            }
+          }}
+        >
+          {isAdmin ? (
+            <>
+              <Ionicons name="shield-checkmark-outline" size={26} color="#0D4722" />
+              <View style={styles.adminBadge}>
+                <Text style={styles.adminBadgeText}>A</Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <Ionicons name="notifications-outline" size={26} color="#0D4722" />
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>3</Text>
+              </View>
+            </>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -57,9 +82,15 @@ export default function HomeScreen({ navigation }: Props) {
             resizeMode="cover"
           >
             <View style={styles.heroTextContainer}>
-              <Text style={styles.heroTitle}>Speak Up Today,</Text>
-              <Text style={styles.heroTitle}>Create a Better Tomorrow.</Text>
-              <Text style={styles.heroSubtitle}>We're here to help.</Text>
+              <Text style={styles.heroTitle}>
+                {isAdmin ? 'Review Complaints,' : 'Speak Up Today,'}
+              </Text>
+              <Text style={styles.heroTitle}>
+                {isAdmin ? 'Ensure Justice.' : 'Create a Better Tomorrow.'}
+              </Text>
+              <Text style={styles.heroSubtitle}>
+                {isAdmin ? 'Admin Dashboard.' : 'We\'re here to help.'}
+              </Text>
             </View>
           </ImageBackground>
 
@@ -67,15 +98,23 @@ export default function HomeScreen({ navigation }: Props) {
           <TouchableOpacity 
             style={styles.floatingActionCard}
             activeOpacity={0.8}
-            onPress={() => navigation.navigate('SubmitComplaint')}
+            onPress={() => navigation.navigate(isAdmin ? 'AdminComplaintsList' : 'SubmitComplaint')}
           >
             <View style={styles.floatingActionLeft}>
               <View style={styles.pencilIconWrapper}>
-                <Ionicons name="create-outline" size={20} color="#0D4722" />
+                <Ionicons 
+                  name={isAdmin ? 'shield-checkmark-outline' : 'create-outline'} 
+                  size={20} 
+                  color="#0D4722" 
+                />
               </View>
               <View style={styles.floatingActionTexts}>
-                <Text style={styles.floatingActionTitle}>Submit a Complaint</Text>
-                <Text style={styles.floatingActionDesc}>Your voice can bring change.</Text>
+                <Text style={styles.floatingActionTitle}>
+                  {isAdmin ? 'Pending Complaints' : 'Submit a Complaint'}
+                </Text>
+                <Text style={styles.floatingActionDesc}>
+                  {isAdmin ? 'Review awaiting decisions.' : 'Your voice can bring change.'}
+                </Text>
               </View>
             </View>
             <View style={styles.arrowIconWrapper}>
@@ -84,7 +123,8 @@ export default function HomeScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
 
-        {/* TRACK YOUR CASE */}
+        {/* TRACK YOUR CASE or ADMIN STATS */}
+        {!isAdmin && (
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Track Your Case</Text>
@@ -142,8 +182,10 @@ export default function HomeScreen({ navigation }: Props) {
             </View>
           </View>
         </View>
+        )}
 
         {/* RECENT UPDATES */}
+        {!isAdmin && (
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Updates</Text>
@@ -178,6 +220,48 @@ export default function HomeScreen({ navigation }: Props) {
             </View>
           </View>
         </View>
+        )}
+        
+        {/* ADMIN TOOLS */}
+        {isAdmin && (
+        <View style={styles.sectionContainer}>
+          <Text style={styles.sectionTitle}>Admin Tools</Text>
+          
+          {/* Review Complaints */}
+          <TouchableOpacity 
+            style={styles.adminToolCard}
+            onPress={() => navigation.navigate('AdminComplaintsList')}
+          >
+            <View style={[styles.adminToolIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="checkmark-circle-outline" size={24} color="#D97706" />
+            </View>
+            <View style={styles.adminToolContent}>
+              <Text style={styles.adminToolTitle}>Review Complaints</Text>
+              <Text style={styles.adminToolDesc}>
+                Approve or reject pending complaints
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+          </TouchableOpacity>
+
+          {/* Categorize Complaints */}
+          <TouchableOpacity 
+            style={styles.adminToolCard}
+            onPress={() => navigation.navigate('AdminCategorizationList')}
+          >
+            <View style={[styles.adminToolIcon, { backgroundColor: '#DBEAFE' }]}>
+              <Ionicons name="layers-outline" size={24} color="#0284C7" />
+            </View>
+            <View style={styles.adminToolContent}>
+              <Text style={styles.adminToolTitle}>Categorize Complaints</Text>
+              <Text style={styles.adminToolDesc}>
+                Assign or update complaint categories
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+          </TouchableOpacity>
+        </View>
+        )}
         
         {/* Extra padding for bottom navigation */}
         <View style={{ height: 100 }} />
@@ -256,6 +340,24 @@ const styles = StyleSheet.create({
     borderColor: '#FAFAFA',
   },
   notificationBadgeText: {
+    color: '#FFF',
+    fontSize: 8,
+    fontWeight: 'bold',
+  },
+  adminBadge: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    backgroundColor: '#3B82F6',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FAFAFA',
+  },
+  adminBadgeText: {
     color: '#FFF',
     fontSize: 8,
     fontWeight: 'bold',
@@ -512,6 +614,44 @@ const styles = StyleSheet.create({
   updateTime: {
     fontSize: 11,
     color: '#9CA3AF',
+  },
+  /* ── Admin Tools ── */
+  adminToolCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  adminToolIcon: {
+    width: 50,
+    height: 50,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  adminToolContent: {
+    flex: 1,
+  },
+  adminToolTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  adminToolDesc: {
+    fontSize: 12,
+    color: '#6B7280',
   },
   /* ── Bottom Nav ── */
   bottomNav: {

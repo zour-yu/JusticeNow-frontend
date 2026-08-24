@@ -191,4 +191,195 @@ export const ComplaintService = {
     );
     return found || null;
   },
+
+  async getPendingComplaints(): Promise<Complaint[]> {
+    try {
+      const response = await api.get('/complaints/pending');
+      if (response.data && response.data.data) {
+        return response.data.data;
+      }
+    } catch (err) {
+      console.log('Loading pending complaints from local store:', err);
+    }
+
+    // Fallback: return locally stored complaints with SUBMITTED status
+    return localComplaintsStore.filter((c) => c.status === ComplaintStatus.SUBMITTED);
+  },
+
+  async reviewComplaint(
+    idOrTracking: string,
+    decision: 'APPROVED' | 'REJECTED',
+    note?: string
+  ): Promise<Complaint> {
+    try {
+      const response = await api.patch(`/complaints/${idOrTracking}/review`, {
+        decision,
+        note: note || '',
+      });
+      if (response.data && response.data.data) {
+        // Update local store with the updated complaint
+        const index = localComplaintsStore.findIndex(
+          (c) => c._id === response.data.data._id || c.trackingNumber === response.data.data.trackingNumber
+        );
+        if (index !== -1) {
+          localComplaintsStore[index] = response.data.data;
+        }
+        return response.data.data;
+      }
+    } catch (err) {
+      console.log('Error submitting review to backend:', err);
+    }
+
+    // Fallback: update the complaint locally
+    const complaint = localComplaintsStore.find(
+      (c) => c._id === idOrTracking || c.trackingNumber === idOrTracking
+    );
+
+    if (!complaint) {
+      throw new Error('Complaint not found');
+    }
+
+    // Update the complaint with the review decision
+    const newStatus =
+      decision === 'APPROVED'
+        ? ComplaintStatus.UNDER_REVIEW
+        : ComplaintStatus.REJECTED;
+
+    const newTimeline = [
+      ...complaint.statusTimeline,
+      {
+        status: newStatus,
+        title:
+          decision === 'APPROVED'
+            ? 'Complaint Approved'
+            : 'Complaint Rejected',
+        note:
+          note ||
+          (decision === 'APPROVED'
+            ? 'Complaint has been approved for further investigation.'
+            : 'Complaint has been rejected.'),
+        updatedBy: 'Admin Review',
+        timestamp: new Date().toISOString(),
+      },
+    ];
+
+    complaint.status = newStatus;
+    complaint.statusTimeline = newTimeline;
+    complaint.updatedAt = new Date().toISOString();
+
+    return complaint;
+  },
+
+  async getComplaintsByStatus(status: ComplaintStatus): Promise<Complaint[]> {
+    try {
+      const response = await api.get(`/complaints/all?status=${status}`);
+      if (response.data && response.data.data) {
+        return response.data.data;
+      }
+    } catch (err) {
+      console.log('Loading complaints by status from local store:', err);
+    }
+
+    // Fallback: filter locally stored complaints by status
+    return localComplaintsStore.filter((c) => c.status === status);
+  },
+
+  async getComplaintsByStatusAndCategory(
+    status: ComplaintStatus,
+    category: ComplaintCategory
+  ): Promise<Complaint[]> {
+    try {
+      const response = await api.get(
+        `/complaints/all?status=${status}&category=${category}`
+      );
+      if (response.data && response.data.data) {
+        return response.data.data;
+      }
+    } catch (err) {
+      console.log(
+        'Loading complaints by status and category from local store:',
+        err
+      );
+    }
+
+    // Fallback: filter locally stored complaints
+    return localComplaintsStore.filter(
+      (c) => c.status === status && c.category === category
+    );
+  },
+
+  async updateComplaintCategory(
+    idOrTracking: string,
+    category: ComplaintCategory
+  ): Promise<Complaint> {
+    try {
+      const response = await api.patch(`/complaints/${idOrTracking}/category`, {
+        category,
+      });
+      if (response.data && response.data.data) {
+        // Update local store
+        const index = localComplaintsStore.findIndex(
+          (c) =>
+            c._id === response.data.data._id ||
+            c.trackingNumber === response.data.data.trackingNumber
+        );
+        if (index !== -1) {
+          localComplaintsStore[index] = response.data.data;
+        }
+        return response.data.data;
+      }
+    } catch (err) {
+      console.log('Error updating category on backend:', err);
+    }
+
+    // Fallback: update locally
+    const complaint = localComplaintsStore.find(
+      (c) => c._id === idOrTracking || c.trackingNumber === idOrTracking
+    );
+
+    if (!complaint) {
+      throw new Error('Complaint not found');
+    }
+
+    const oldCategory = complaint.category;
+    complaint.category = category;
+    complaint.updatedAt = new Date().toISOString();
+
+    // Add timeline entry
+    complaint.statusTimeline.push({
+      status: complaint.status,
+      title: 'Category Updated',
+      note: `Category changed from ${oldCategory} to ${category}`,
+      updatedBy: 'Admin Categorization',
+      timestamp: new Date().toISOString(),
+    });
+
+    return complaint;
+  },
+
+  async getComplaintMetrics(): Promise<{
+    byCategory: Record<string, number>;
+    byStatus: Record<string, number>;
+  }> {
+    try {
+      const response = await api.get('/complaints/metrics');
+      if (response.data && response.data.data) {
+        return response.data.data;
+      }
+    } catch (err) {
+      console.log('Loading metrics from local data:', err);
+    }
+
+    // Fallback: calculate from local store
+    const byCategory: Record<string, number> = {};
+    const byStatus: Record<string, number> = {};
+
+    localComplaintsStore.forEach((complaint) => {
+      byCategory[complaint.category] =
+        (byCategory[complaint.category] || 0) + 1;
+      byStatus[complaint.status] = (byStatus[complaint.status] || 0) + 1;
+    });
+
+    return { byCategory, byStatus };
+  },
 };
