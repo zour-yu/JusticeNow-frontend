@@ -3,7 +3,6 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  SafeAreaView, 
   TouchableOpacity, 
   ScrollView,
   Dimensions,
@@ -11,6 +10,7 @@ import {
   ActivityIndicator,
   Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../shared/store/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
@@ -111,7 +111,7 @@ export default function PersonalInformationScreen({ navigation }: Props) {
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false} bounces={false}>
         
-        <View style={{ backgroundColor: '#FFF', zIndex: 10 }}>
+        <View style={{ backgroundColor: '#FAFAFA', zIndex: 10 }}>
           <Svg height="50" width={width} style={{ transform: [{ translateY: 5 }] }}>
             <Path
               d={`M 0 50 L 0 25 C ${width * 0.25} -10, ${width * 0.75} 60, ${width} 25 L ${width} 50 Z`}
@@ -248,7 +248,7 @@ export default function PersonalInformationScreen({ navigation }: Props) {
 const HERO_H = 140;
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFF' },
+  safe: { flex: 1, backgroundColor: '#FAFAFA' },
   scrollView: { flex: 1, backgroundColor: '#FAFAFA' },
   
   header: {
@@ -256,9 +256,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 15,
+    paddingTop: 10,
     paddingBottom: 15,
-    backgroundColor: '#FFF',
+    backgroundColor: '#FAFAFA',
     zIndex: 10,
   },
   headerIconBtn: { padding: 5 },

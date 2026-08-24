@@ -3,12 +3,12 @@ import {
   View, 
   Text, 
   StyleSheet, 
-  SafeAreaView, 
   TouchableOpacity, 
   ScrollView,
   Image,
   Dimensions
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../shared/store/authStore';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -186,8 +186,8 @@ export const ProfileScreen = ({ navigation }: Props) => {
 const SKYLINE_H  = 180;
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#FFF' },
-  scrollView: { flex: 1, backgroundColor: '#FFF' },
+  safe: { flex: 1, backgroundColor: '#FAFAFA' },
+  scrollView: { flex: 1, backgroundColor: '#FAFAFA' },
   scrollContent: { paddingBottom: 20 },
 
   header: {
@@ -195,9 +195,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 15,
+    paddingTop: 10,
     paddingBottom: 15,
-    backgroundColor: '#FFF',
+    backgroundColor: '#FAFAFA',
     zIndex: 10,
   },
   headerIconBtn: { padding: 5, position: 'relative' },
@@ -207,14 +207,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444',
     width: 14, height: 14, borderRadius: 7,
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1.5, borderColor: '#FFF',
+    borderWidth: 1.5, borderColor: '#FAFAFA',
   },
   notificationBadgeText: { color: '#FFF', fontSize: 8, fontWeight: 'bold' },
 
   heroSection: {
     height: SKYLINE_H,
     position: 'relative',
-    backgroundColor: '#FFF',
+    backgroundColor: '#FAFAFA',
     marginHorizontal: 20,
     marginTop: 10,
     borderRadius: 20,

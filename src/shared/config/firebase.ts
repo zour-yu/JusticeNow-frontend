@@ -1,14 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { initializeAuth, getReactNativePersistence, getAuth, type Persistence } from 'firebase/auth';
-import AsyncStorage, { createAsyncStorage } from '@react-native-async-storage/async-storage';
-
-// Module augmentation for React Native persistence support in Firebase Auth
-declare module 'firebase/auth' {
-  export function getReactNativePersistence(storage: any): Persistence;
-}
-import { initializeApp } from 'firebase/app';
-// @ts-ignore
-import { initializeAuth, getReactNativePersistence, getAuth, Auth } from 'firebase/auth';
+// @ts-ignore - getReactNativePersistence may not be in the public typings for all Firebase versions
+import { initializeAuth, getReactNativePersistence, getAuth } from 'firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Your web app's Firebase configuration extracted from google-services.json
@@ -21,26 +13,18 @@ const firebaseConfig = {
   appId: '1:110044162693:android:3075ac7c446ed4b98a17ec',
 };
 
-// Initialize Firebase App
+// Initialize Firebase App (guard against duplicate initialization in hot-reload)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-// Initialize Firebase Auth with React Native persistence
+// Initialize Firebase Auth with React Native AsyncStorage persistence
 let auth: ReturnType<typeof getAuth>;
-try {
-  const storage = typeof createAsyncStorage === 'function'
-    ? createAsyncStorage('justice_now_auth')
-    : AsyncStorage;
-  auth = initializeAuth(app, {
-    persistence: getReactNativePersistence(storage),
-// Initialize Firebase Auth with persistence fallback
-let auth: Auth;
 try {
   auth = initializeAuth(app, {
     persistence: getReactNativePersistence(AsyncStorage),
   });
 } catch {
+  // Already initialized (e.g. hot-reload) — grab the existing instance
   auth = getAuth(app);
 }
 
 export { app, auth };
-
