@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../shared/store/authStore';
 import { Ionicons } from '@expo/vector-icons';
+import { NotificationBell } from '../../notifications/components/NotificationBell';
 
 interface Props {
   navigation: any;
@@ -50,11 +51,11 @@ export const ProfileScreen = ({ navigation }: Props) => {
           <Ionicons name="menu-outline" size={28} color="#0D4722" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Justice Now</Text>
-        <TouchableOpacity style={styles.headerIconBtn}>
-          <Ionicons name="notifications-outline" size={26} color="#0D4722" />
-          <View style={styles.notificationBadge}>
-            <Text style={styles.notificationBadgeText}>3</Text>
-          </View>
+        <TouchableOpacity 
+          style={styles.headerIconBtn}
+          onPress={() => navigation.navigate('Notifications')}
+        >
+          <NotificationBell />
         </TouchableOpacity>
       </View>
 
