@@ -11,37 +11,29 @@ interface Props {
 export const CaseStatusBadge: React.FC<Props> = ({ status, size = 'medium' }) => {
   const getBadgeConfig = () => {
     switch (status) {
-      case CaseStatus.ASSIGNED:
+      case CaseStatus.NEW:
         return {
-          label: 'Assigned',
-          icon: 'person-add-outline' as const,
-          bgColor: '#EFF6FF',
-          textColor: '#1D4ED8',
-          borderColor: '#BFDBFE',
+          label: 'New Case',
+          icon: 'alert-circle-outline' as const,
+          bgColor: '#FFF7ED',
+          textColor: '#C2410C',
+          borderColor: '#FED7AA',
+        };
+      case CaseStatus.PENDING:
+        return {
+          label: 'Pending Start',
+          icon: 'time-outline' as const,
+          bgColor: '#FEF3C7',
+          textColor: '#B45309',
+          borderColor: '#FDE68A',
         };
       case CaseStatus.UNDER_INVESTIGATION:
         return {
           label: 'Under Investigation',
           icon: 'search-outline' as const,
-          bgColor: '#FEF3C7',
-          textColor: '#B45309',
-          borderColor: '#FDE68A',
-        };
-      case CaseStatus.EVIDENCE_COLLECTION:
-        return {
-          label: 'Evidence Collection',
-          icon: 'folder-open-outline' as const,
-          bgColor: '#F3E8FF',
-          textColor: '#7E22CE',
-          borderColor: '#E9D5FF',
-        };
-      case CaseStatus.REPORT_SUBMITTED:
-        return {
-          label: 'Report Submitted',
-          icon: 'document-text-outline' as const,
-          bgColor: '#E0E7FF',
-          textColor: '#4338CA',
-          borderColor: '#C7D2FE',
+          bgColor: '#EFF6FF',
+          textColor: '#1D4ED8',
+          borderColor: '#BFDBFE',
         };
       case CaseStatus.RESOLVED:
         return {

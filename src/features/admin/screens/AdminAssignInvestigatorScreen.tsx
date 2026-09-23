@@ -22,10 +22,10 @@ import { InvestigatorSelectorModal } from '../components/InvestigatorSelectorMod
 const FILTER_TABS = [
   { key: 'ALL', label: 'All Cases' },
   { key: 'UNASSIGNED', label: 'Needs Assignment' },
-  { key: CaseStatus.ASSIGNED, label: 'Assigned' },
+  { key: CaseStatus.PENDING, label: 'Pending Start' },
   { key: CaseStatus.UNDER_INVESTIGATION, label: 'Under Investigation' },
-  { key: CaseStatus.EVIDENCE_COLLECTION, label: 'Evidence Collection' },
   { key: CaseStatus.RESOLVED, label: 'Resolved' },
+  { key: CaseStatus.CLOSED, label: 'Closed' },
 ];
 
 export const AdminAssignInvestigatorScreen = ({ navigation }: any) => {
@@ -142,12 +142,12 @@ export const AdminAssignInvestigatorScreen = ({ navigation }: any) => {
     { key: 'UNASSIGNED', label: `Needs Assignment (${totalUnassigned})` },
     { key: 'ASSIGNED', label: `Already Assigned (${totalAssigned})` },
     {
-      key: CaseStatus.UNDER_INVESTIGATION,
-      label: `In Fieldwork (${cases.filter((c) => c.status === CaseStatus.UNDER_INVESTIGATION).length})`,
+      key: CaseStatus.PENDING,
+      label: `Pending Start (${cases.filter((c) => c.status === CaseStatus.PENDING).length})`,
     },
     {
-      key: CaseStatus.EVIDENCE_COLLECTION,
-      label: `Evidence Vault (${cases.filter((c) => c.status === CaseStatus.EVIDENCE_COLLECTION).length})`,
+      key: CaseStatus.UNDER_INVESTIGATION,
+      label: `In Fieldwork (${cases.filter((c) => c.status === CaseStatus.UNDER_INVESTIGATION).length})`,
     },
     {
       key: CaseStatus.RESOLVED,

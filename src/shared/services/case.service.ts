@@ -133,7 +133,7 @@ const INITIAL_MOCK_CASES: Case[] = [
     ],
     statusTimeline: [
       {
-        status: CaseStatus.ASSIGNED,
+        status: CaseStatus.PENDING,
         title: 'Case Assigned to Lead Investigator',
         note: 'Formal case established following approval of complaint JN-2026-482910.',
         updatedBy: 'Admin Vance',
@@ -159,7 +159,7 @@ const INITIAL_MOCK_CASES: Case[] = [
     description: 'Textile manufacturing facility enforcing 14-hour mandatory shifts in unventilated rooms without fire exits or compensation.',
     category: ComplaintCategory.LABOR_RIGHTS,
     priority: CasePriority.URGENT,
-    status: CaseStatus.EVIDENCE_COLLECTION,
+    status: CaseStatus.UNDER_INVESTIGATION,
     assignedInvestigatorId: 'inv-101',
     assignedInvestigatorName: 'Lead Investigator Sarah Connor',
     assignedInvestigatorEmail: 'investigator@justicenow.org',
@@ -212,7 +212,7 @@ const INITIAL_MOCK_CASES: Case[] = [
     ],
     statusTimeline: [
       {
-        status: CaseStatus.ASSIGNED,
+        status: CaseStatus.PENDING,
         title: 'Case Assigned as Urgent Priority',
         note: 'Assigned to Sarah Connor due to imminent workplace safety hazards.',
         updatedBy: 'Human Rights Review Board',
@@ -226,7 +226,7 @@ const INITIAL_MOCK_CASES: Case[] = [
         timestamp: '2026-08-14T08:00:00.000Z',
       },
       {
-        status: CaseStatus.EVIDENCE_COLLECTION,
+        status: CaseStatus.UNDER_INVESTIGATION,
         title: 'Documentary & Physical Evidence Gathered',
         note: 'Retrieved shift rosters and photographic evidence of fire hazard violations.',
         updatedBy: 'Sarah Connor',
@@ -245,7 +245,7 @@ const INITIAL_MOCK_CASES: Case[] = [
     description: 'Campus reporter detained without formal charges or access to legal counsel after filming public university protest.',
     category: ComplaintCategory.ARBITRARY_DETENTION,
     priority: CasePriority.HIGH,
-    status: CaseStatus.REPORT_SUBMITTED,
+    status: CaseStatus.UNDER_INVESTIGATION,
     assignedInvestigatorId: 'inv-101',
     assignedInvestigatorName: 'Lead Investigator Sarah Connor',
     assignedInvestigatorEmail: 'investigator@justicenow.org',
@@ -297,14 +297,14 @@ const INITIAL_MOCK_CASES: Case[] = [
     ],
     statusTimeline: [
       {
-        status: CaseStatus.ASSIGNED,
+        status: CaseStatus.PENDING,
         title: 'Assigned to Case Unit',
         note: 'Assigned for immediate intervention.',
         updatedBy: 'Admin Vance',
         timestamp: '2026-08-05T09:00:00.000Z',
       },
       {
-        status: CaseStatus.REPORT_SUBMITTED,
+        status: CaseStatus.UNDER_INVESTIGATION,
         title: 'Final Report Submitted for Judicial Review',
         note: 'Investigation concluded with full evidence dossier.',
         updatedBy: 'Sarah Connor',
@@ -354,7 +354,7 @@ const INITIAL_MOCK_CASES: Case[] = [
     ],
     statusTimeline: [
       {
-        status: CaseStatus.ASSIGNED,
+        status: CaseStatus.PENDING,
         title: 'Case Assigned',
         note: 'Assigned to Sarah Connor.',
         updatedBy: 'Admin Vance',
@@ -404,7 +404,7 @@ const INITIAL_MOCK_CASES: Case[] = [
     investigationNotes: [],
     statusTimeline: [
       {
-        status: CaseStatus.ASSIGNED,
+        status: CaseStatus.PENDING,
         title: 'Assigned to Officer Kim',
         note: 'Assigned to David Kim.',
         updatedBy: 'Admin Vance',
@@ -422,7 +422,7 @@ const INITIAL_MOCK_CASES: Case[] = [
     description: 'Public official demanded illegal cash payment to release rightful property deed.',
     category: ComplaintCategory.OTHER,
     priority: CasePriority.HIGH,
-    status: CaseStatus.ASSIGNED,
+    status: CaseStatus.NEW,
     assignedInvestigatorId: '',
     assignedInvestigatorName: '',
     assignedInvestigatorEmail: '',
@@ -445,7 +445,7 @@ const INITIAL_MOCK_CASES: Case[] = [
     investigationNotes: [],
     statusTimeline: [
       {
-        status: CaseStatus.ASSIGNED,
+        status: CaseStatus.NEW,
         title: 'Complaint Approved - Awaiting Investigator Assignment',
         note: 'Approved by Admin. Ready for investigator assignment.',
         updatedBy: 'Admin Vance',
@@ -463,7 +463,7 @@ const INITIAL_MOCK_CASES: Case[] = [
     description: 'Commercial entity discharging untreated toxic effluent into public water stream.',
     category: ComplaintCategory.OTHER,
     priority: CasePriority.URGENT,
-    status: CaseStatus.ASSIGNED,
+    status: CaseStatus.NEW,
     assignedInvestigatorId: '',
     assignedInvestigatorName: '',
     assignedInvestigatorEmail: '',
@@ -484,7 +484,7 @@ const INITIAL_MOCK_CASES: Case[] = [
     investigationNotes: [],
     statusTimeline: [
       {
-        status: CaseStatus.ASSIGNED,
+        status: CaseStatus.NEW,
         title: 'Complaint Approved - Awaiting Investigator Assignment',
         note: 'High urgency environmental case approved.',
         updatedBy: 'Admin Vance',
@@ -744,17 +744,17 @@ export const CaseService = {
     }
 
     const total = localCasesStore.length;
+    const newCases = localCasesStore.filter((c) => c.status === CaseStatus.NEW).length;
+    const pending = localCasesStore.filter((c) => c.status === CaseStatus.PENDING).length;
     const underInvestigation = localCasesStore.filter((c) => c.status === CaseStatus.UNDER_INVESTIGATION).length;
-    const evidenceCollection = localCasesStore.filter((c) => c.status === CaseStatus.EVIDENCE_COLLECTION).length;
-    const reportSubmitted = localCasesStore.filter((c) => c.status === CaseStatus.REPORT_SUBMITTED).length;
     const resolved = localCasesStore.filter((c) => c.status === CaseStatus.RESOLVED).length;
 
     return {
       total,
-      active: underInvestigation + evidenceCollection + reportSubmitted,
+      active: newCases + pending + underInvestigation,
+      newCases,
+      pending,
       underInvestigation,
-      evidenceCollection,
-      reportSubmitted,
       resolved,
     };
   },
@@ -820,7 +820,7 @@ export const CaseService = {
     const updatedTimeline = [
       ...caseItem.statusTimeline,
       {
-        status: CaseStatus.ASSIGNED,
+        status: CaseStatus.PENDING,
         title: 'Investigator Assigned',
         note: assignmentNote,
         updatedBy: 'Administrator',
@@ -837,7 +837,7 @@ export const CaseService = {
       assignedAt: new Date().toISOString(),
       status:
         caseItem.status === CaseStatus.RESOLVED || caseItem.status === CaseStatus.CLOSED
-          ? CaseStatus.ASSIGNED
+          ? CaseStatus.PENDING
           : caseItem.status,
       priority: input.priority || caseItem.priority,
       statusTimeline: updatedTimeline,
@@ -872,7 +872,7 @@ export const CaseService = {
       description: `Formal investigation initiated for complaint ${complaintId}.`,
       category: ComplaintCategory.OTHER,
       priority: input.priority || CasePriority.MEDIUM,
-      status: CaseStatus.ASSIGNED,
+      status: CaseStatus.PENDING,
       assignedInvestigatorId: input.investigatorId,
       assignedInvestigatorName: input.investigatorName,
       assignedInvestigatorEmail: input.investigatorEmail || '',
@@ -900,7 +900,7 @@ export const CaseService = {
         : [],
       statusTimeline: [
         {
-          status: CaseStatus.ASSIGNED,
+          status: CaseStatus.PENDING,
           title: 'Case Created and Investigator Assigned',
           note: `Case assigned to ${input.investigatorName} by Administrator.${input.note ? ` Notes: ${input.note}` : ''}`,
           updatedBy: 'Administrator',

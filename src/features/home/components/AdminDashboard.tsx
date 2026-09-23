@@ -77,7 +77,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
   );
 
   const activeFieldCases = cases.filter(
-    (c) => c.status === CaseStatus.UNDER_INVESTIGATION || c.status === CaseStatus.EVIDENCE_COLLECTION
+    (c) => c.status === CaseStatus.UNDER_INVESTIGATION
   );
 
   const currentDate = new Date().toLocaleDateString('en-US', {

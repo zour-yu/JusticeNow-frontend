@@ -28,10 +28,9 @@ import { InvestigationNotesSection } from '../components/InvestigationNotesSecti
 import { InvestigatorSelectorModal } from '../../admin/components/InvestigatorSelectorModal';
 
 const STATUS_OPTIONS = [
-  { value: CaseStatus.ASSIGNED, label: 'Assigned', desc: 'Case received and queued' },
-  { value: CaseStatus.UNDER_INVESTIGATION, label: 'Under Investigation', desc: 'Active fieldwork and interviews underway' },
-  { value: CaseStatus.EVIDENCE_COLLECTION, label: 'Evidence Collection', desc: 'Gathering physical/digital evidence and documents' },
-  { value: CaseStatus.REPORT_SUBMITTED, label: 'Report Submitted', desc: 'Final investigation dossier prepared' },
+  { value: CaseStatus.NEW, label: 'New Case', desc: 'Case created, no investigator assigned yet' },
+  { value: CaseStatus.PENDING, label: 'Pending Start', desc: 'Investigator assigned, not yet started' },
+  { value: CaseStatus.UNDER_INVESTIGATION, label: 'Under Investigation', desc: 'Active fieldwork, evidence gathering and reporting' },
   { value: CaseStatus.RESOLVED, label: 'Resolved', desc: 'Remedy achieved or mediation concluded' },
   { value: CaseStatus.CLOSED, label: 'Closed', desc: 'Investigation formally concluded' },
 ];
@@ -45,7 +44,7 @@ export const CaseDetailScreen = ({ route, navigation }: any) => {
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [assignModalVisible, setAssignModalVisible] = useState(false);
   const [selectedNewStatus, setSelectedNewStatus] = useState<CaseStatus>(
-    initialCase?.status || CaseStatus.UNDER_INVESTIGATION
+    initialCase?.status || CaseStatus.PENDING
   );
   const [statusNote, setStatusNote] = useState('');
   const [findingsText, setFindingsText] = useState(initialCase?.findings || '');

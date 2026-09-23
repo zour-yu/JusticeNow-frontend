@@ -203,42 +203,42 @@ export const InvestigatorDashboard: React.FC<Props> = ({ user, navigation }) => 
               <Text style={styles.metricCardLabel}>In Fieldwork</Text>
             </TouchableOpacity>
 
-            {/* Evidence Card */}
+            {/* New Cases Card */}
             <TouchableOpacity
-              style={[styles.metricCard, { borderLeftColor: '#7C3AED' }]}
+              style={[styles.metricCard, { borderLeftColor: '#EA580C' }]}
               onPress={() =>
                 navigation.navigate('AssignedCases', {
-                  statusFilter: CaseStatus.EVIDENCE_COLLECTION,
+                  statusFilter: CaseStatus.NEW,
                 })
               }
               activeOpacity={0.8}
             >
-              <View style={[styles.metricIconWrap, { backgroundColor: '#F5F3FF' }]}>
-                <Ionicons name="images" size={20} color="#7C3AED" />
+              <View style={[styles.metricIconWrap, { backgroundColor: '#FFF7ED' }]}>
+                <Ionicons name="alert-circle" size={20} color="#EA580C" />
               </View>
-              <Text style={[styles.metricCardValue, { color: '#6D28D9' }]}>
-                {metrics.evidenceCollection || 0}
+              <Text style={[styles.metricCardValue, { color: '#C2410C' }]}>
+                {metrics.newCases || 0}
               </Text>
-              <Text style={styles.metricCardLabel}>Evidence Vault</Text>
+              <Text style={styles.metricCardLabel}>New Cases</Text>
             </TouchableOpacity>
 
-            {/* Reports Card */}
+            {/* Pending Start Card */}
             <TouchableOpacity
               style={[styles.metricCard, { borderLeftColor: '#D97706' }]}
               onPress={() =>
                 navigation.navigate('AssignedCases', {
-                  statusFilter: CaseStatus.REPORT_SUBMITTED,
+                  statusFilter: CaseStatus.PENDING,
                 })
               }
               activeOpacity={0.8}
             >
               <View style={[styles.metricIconWrap, { backgroundColor: '#FEF3C7' }]}>
-                <Ionicons name="document-text" size={20} color="#D97706" />
+                <Ionicons name="time" size={20} color="#D97706" />
               </View>
               <Text style={[styles.metricCardValue, { color: '#B45309' }]}>
-                {metrics.reportSubmitted || 0}
+                {metrics.pending || 0}
               </Text>
-              <Text style={styles.metricCardLabel}>Reports Ready</Text>
+              <Text style={styles.metricCardLabel}>Pending Start</Text>
             </TouchableOpacity>
           </View>
         </View>
