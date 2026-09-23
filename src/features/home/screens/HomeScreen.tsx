@@ -14,6 +14,7 @@ import { useAuthStore } from '../../../shared/store/authStore';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { InvestigatorDashboard } from '../components/InvestigatorDashboard';
 import { AdminDashboard } from '../components/AdminDashboard';
+import { NotificationBell } from '../../notifications/components/NotificationBell';
 
 interface Props {
   navigation: any;
@@ -86,6 +87,8 @@ export default function HomeScreen({ navigation }: Props) {
               navigation.navigate('AdminComplaintsList');
             } else if (isInvestigator) {
               navigation.navigate('AssignedCases');
+            } else {
+              navigation.navigate('Notifications');
             }
           }}
         >
@@ -104,12 +107,7 @@ export default function HomeScreen({ navigation }: Props) {
               </View>
             </>
           ) : (
-            <>
-              <Ionicons name="notifications-outline" size={26} color="#0D4722" />
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>3</Text>
-              </View>
-            </>
+            <NotificationBell />
           )}
         </TouchableOpacity>
       </View>
