@@ -1,10 +1,9 @@
 import { ComplaintCategory } from './complaint.types';
 
 export enum CaseStatus {
-  ASSIGNED = 'ASSIGNED',
+  NEW = 'NEW',
+  PENDING = 'PENDING',
   UNDER_INVESTIGATION = 'UNDER_INVESTIGATION',
-  EVIDENCE_COLLECTION = 'EVIDENCE_COLLECTION',
-  REPORT_SUBMITTED = 'REPORT_SUBMITTED',
   RESOLVED = 'RESOLVED',
   CLOSED = 'CLOSED',
 }

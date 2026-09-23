@@ -19,10 +19,9 @@ import { CaseCard } from '../components/CaseCard';
 
 const FILTER_TABS = [
   { key: 'ALL', label: 'All Cases' },
-  { key: CaseStatus.ASSIGNED, label: 'Assigned' },
+  { key: CaseStatus.NEW, label: 'New' },
+  { key: CaseStatus.PENDING, label: 'Pending Start' },
   { key: CaseStatus.UNDER_INVESTIGATION, label: 'In Investigation' },
-  { key: CaseStatus.EVIDENCE_COLLECTION, label: 'Evidence Collection' },
-  { key: CaseStatus.REPORT_SUBMITTED, label: 'Report Submitted' },
   { key: CaseStatus.RESOLVED, label: 'Resolved' },
 ];
 
@@ -37,8 +36,9 @@ export const AssignedCasesScreen = ({ navigation }: any) => {
   const [metrics, setMetrics] = useState({
     total: 0,
     active: 0,
+    newCases: 0,
+    pending: 0,
     underInvestigation: 0,
-    evidenceCollection: 0,
     resolved: 0,
   });
 
