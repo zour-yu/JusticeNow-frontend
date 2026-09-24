@@ -15,6 +15,7 @@ import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { InvestigatorDashboard } from '../components/InvestigatorDashboard';
 import { AdminDashboard } from '../components/AdminDashboard';
 import { NotificationBell } from '../../notifications/components/NotificationBell';
+import { usePushNotifications } from '../../../shared/hooks/usePushNotifications';
 
 interface Props {
   navigation: any;
@@ -24,6 +25,7 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }: Props) {
   const { user, logout } = useAuthStore();
+  usePushNotifications(user);
 
   const handleLogout = async () => {
     await logout();
