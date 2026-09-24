@@ -116,10 +116,18 @@ export const AdminAssignInvestigatorScreen = ({ navigation }: any) => {
   const handleAssignConfirm = async (input: AssignInvestigatorInput) => {
     if (!selectedCaseForAssignment) return;
 
-    await CaseService.assignInvestigator(
-      selectedCaseForAssignment._id || selectedCaseForAssignment.caseNumber,
-      input
-    );
+    const caseId = selectedCaseForAssignment.caseNumber;
+    if (caseId.startsWith('JN-') || selectedCaseForAssignment.complaintId === caseId) {
+      await CaseService.assignComplaintToInvestigator(
+        selectedCaseForAssignment.complaintId || caseId,
+        input
+      );
+    } else {
+      await CaseService.assignInvestigator(
+        selectedCaseForAssignment._id || caseId,
+        input
+      );
+    }
 
     // Refresh case list
     await loadCases();

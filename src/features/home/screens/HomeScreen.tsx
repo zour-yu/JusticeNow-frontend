@@ -15,6 +15,7 @@ import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { InvestigatorDashboard } from '../components/InvestigatorDashboard';
 import { AdminDashboard } from '../components/AdminDashboard';
 import { NotificationBell } from '../../notifications/components/NotificationBell';
+import { usePushNotifications } from '../../../shared/hooks/usePushNotifications';
 
 interface Props {
   navigation: any;
@@ -24,6 +25,7 @@ const { width } = Dimensions.get('window');
 
 export default function HomeScreen({ navigation }: Props) {
   const { user, logout } = useAuthStore();
+  usePushNotifications(user);
 
   const handleLogout = async () => {
     await logout();
@@ -80,36 +82,38 @@ export default function HomeScreen({ navigation }: Props) {
           <Ionicons name="menu-outline" size={28} color="#0D4722" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Justice Now</Text>
-        <TouchableOpacity 
-          style={styles.headerIconBtn}
-          onPress={() => {
-            if (isAdmin) {
-              navigation.navigate('AdminComplaintsList');
-            } else if (isInvestigator) {
-              navigation.navigate('AssignedCases');
-            } else {
-              navigation.navigate('Notifications');
-            }
-          }}
-        >
-          {isAdmin ? (
-            <>
+        <View style={styles.headerRightRow}>
+          {isAdmin && (
+            <TouchableOpacity 
+              style={styles.headerIconBtn}
+              onPress={() => navigation.navigate('AdminComplaintsList')}
+            >
               <Ionicons name="shield-checkmark-outline" size={26} color="#0D4722" />
               <View style={styles.adminBadge}>
                 <Text style={styles.adminBadgeText}>A</Text>
               </View>
-            </>
-          ) : isInvestigator ? (
-            <>
+            </TouchableOpacity>
+          )}
+
+          {isInvestigator && (
+            <TouchableOpacity 
+              style={styles.headerIconBtn}
+              onPress={() => navigation.navigate('AssignedCases')}
+            >
               <Ionicons name="briefcase-outline" size={26} color="#0D4722" />
               <View style={[styles.adminBadge, { backgroundColor: '#0D4722' }]}>
                 <Text style={styles.adminBadgeText}>INV</Text>
               </View>
-            </>
-          ) : (
-            <NotificationBell />
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.headerIconBtn}
+            onPress={() => navigation.navigate('Notifications')}
+          >
+            <NotificationBell onPress={() => navigation.navigate('Notifications')} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView 
@@ -404,6 +408,11 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 15,
     backgroundColor: '#FAFAFA',
+  },
+  headerRightRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   headerIconBtn: {
     padding: 5,

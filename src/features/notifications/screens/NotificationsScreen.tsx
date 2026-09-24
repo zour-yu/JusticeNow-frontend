@@ -41,12 +41,18 @@ export const NotificationsScreen = ({ navigation }: any) => {
       await markAsRead(notification._id);
     }
     
-    // Navigate to case details
+    // Navigate to details
     if (notification.caseId) {
-      navigation.navigate('CaseDetails', { 
-        id: notification.caseId, 
-        caseNumber: notification.caseId 
-      });
+      if (notification.caseId.startsWith('JN-')) {
+        navigation.navigate('ComplaintDetail', { 
+          complaintId: notification.caseId,
+        });
+      } else {
+        navigation.navigate('CaseDetail', { 
+          caseId: notification.caseId, 
+          id: notification.caseId, 
+        });
+      }
     }
   };
 
@@ -61,6 +67,8 @@ export const NotificationsScreen = ({ navigation }: any) => {
         return 'person-add-outline';
       case NotificationType.CASE_STATUS_CHANGED:
         return 'swap-horizontal-outline';
+      case NotificationType.COMPLAINT_STATUS_CHANGED:
+        return 'document-text-outline';
       default:
         return 'notifications-outline';
     }
