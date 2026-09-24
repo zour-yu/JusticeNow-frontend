@@ -20,10 +20,10 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
     // Initial fetch
     fetchUnreadCount();
     
-    // Poll for notifications every 30 seconds
+    // Poll for notifications every 10 seconds
     const interval = setInterval(() => {
       fetchUnreadCount();
-    }, 30000);
+    }, 10000);
     
     return () => clearInterval(interval);
   }, []);
