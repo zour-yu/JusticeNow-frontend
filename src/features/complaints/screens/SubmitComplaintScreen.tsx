@@ -11,9 +11,12 @@ import {
   Modal,
   StyleSheet,
   StatusBar,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { CategorySelector } from '../components/CategorySelector';
 import {
   ComplaintCategory,
@@ -22,6 +25,7 @@ import {
   Complaint,
 } from '../../../shared/types/complaint.types';
 import { ComplaintService } from '../../../shared/services/complaint.service';
+import { UploadService } from '../../../shared/services/upload.service';
 
 export const SubmitComplaintScreen = ({ navigation }: any) => {
   const [category, setCategory] = useState<ComplaintCategory>(
@@ -45,32 +49,127 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
     null
   );
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [isUploadingEvidence, setIsUploadingEvidence] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
-  const handleAddSampleEvidence = (type: 'photo' | 'document' | 'video') => {
-    const defaultNames: Record<string, string> = {
-      photo: 'Incident_Photo_Evidence.jpg',
-      document: 'Medical_Legal_Report.pdf',
-      video: 'Video_Recording.mp4',
-    };
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes || bytes <= 0) return '';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
-    const name = newEvidenceName.trim() || defaultNames[type];
+  const processAndUploadAsset = async (asset: ImagePicker.ImagePickerAsset) => {
+    setIsUploadingEvidence(true);
+    setUploadProgress(0);
+    const isVideo = asset.type === 'video';
+    const defaultName = `Incident_${Date.now()}.${isVideo ? 'mp4' : 'jpg'}`;
+    const cleanName = newEvidenceName.trim() || asset.fileName || defaultName;
+
+    const uploadRes = await UploadService.uploadFile(
+      asset.uri,
+      cleanName,
+      isVideo ? 'video' : 'image',
+      asset.mimeType,
+      (pct) => setUploadProgress(pct)
+    );
+
     const newEvidence: EvidenceItem = {
       id: `ev-${Date.now()}`,
-      name,
-      type,
-      url: 'https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&w=600&q=80',
-      size: 1540000,
+      name: cleanName,
+      type: uploadRes.type,
+      url: uploadRes.url,
+      size: uploadRes.size || asset.fileSize || 1024 * 500,
       uploadedAt: new Date().toISOString(),
     };
 
-    setEvidenceList([...evidenceList, newEvidence]);
+    setEvidenceList((prev) => [...prev, newEvidence]);
     setNewEvidenceName('');
     setShowEvidenceModal(false);
+  };
+
+  const handlePickMedia = async (source: 'camera' | 'gallery' | 'document') => {
+    try {
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'Camera permission is required to capture evidence.');
+          return;
+        }
+        const result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ['images', 'videos'],
+          quality: 0.8,
+          allowsEditing: false,
+        });
+        if (!result.canceled && result.assets && result.assets[0]) {
+          await processAndUploadAsset(result.assets[0]);
+        }
+      } else if (source === 'gallery') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          Alert.alert('Permission Denied', 'Gallery access is required to select photos or videos.');
+          return;
+        }
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images', 'videos'],
+          quality: 0.8,
+          allowsEditing: false,
+        });
+        if (!result.canceled && result.assets && result.assets[0]) {
+          await processAndUploadAsset(result.assets[0]);
+        }
+      } else if (source === 'document') {
+        const result = await DocumentPicker.getDocumentAsync({
+          type: '*/*',
+          copyToCacheDirectory: true,
+        });
+        if (!result.canceled && result.assets && result.assets[0]) {
+          const doc = result.assets[0];
+          let detectedType: 'image' | 'document' | 'audio' | 'video' = 'document';
+          if (doc.mimeType?.startsWith('image/') || /\.(jpg|jpeg|png|webp)$/i.test(doc.name)) {
+            detectedType = 'image';
+          } else if (doc.mimeType?.startsWith('video/') || /\.(mp4|mov|avi|mkv)$/i.test(doc.name)) {
+            detectedType = 'video';
+          } else if (doc.mimeType?.startsWith('audio/') || /\.(mp3|wav|m4a|aac)$/i.test(doc.name)) {
+            detectedType = 'audio';
+          }
+
+          setIsUploadingEvidence(true);
+          setUploadProgress(0);
+          const uploadRes = await UploadService.uploadFile(
+            doc.uri,
+            newEvidenceName.trim() || doc.name,
+            detectedType,
+            doc.mimeType,
+            (pct) => setUploadProgress(pct)
+          );
+
+          const newEvidence: EvidenceItem = {
+            id: `ev-${Date.now()}`,
+            name: newEvidenceName.trim() || uploadRes.name,
+            type: uploadRes.type,
+            url: uploadRes.url,
+            size: uploadRes.size || doc.size,
+            uploadedAt: new Date().toISOString(),
+          };
+
+          setEvidenceList((prev) => [...prev, newEvidence]);
+          setNewEvidenceName('');
+          setShowEvidenceModal(false);
+        }
+      }
+    } catch (err: any) {
+      Alert.alert('Attachment Error', err.message || 'Failed to select and attach evidence file.');
+    } finally {
+      setIsUploadingEvidence(false);
+      setUploadProgress(null);
+    }
   };
 
   const handleRemoveEvidence = (id: string) => {
     setEvidenceList(evidenceList.filter((item) => item.id !== id));
   };
+
 
   const validateForm = () => {
     if (!title.trim()) {
@@ -298,15 +397,21 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
             <View style={styles.evidenceListContainer}>
               {evidenceList.map((item) => (
                 <View key={item.id} style={styles.evidenceItem}>
-                  <Text style={styles.evidenceItemIcon}>
-                    {item.type === 'photo' ? '🖼️' : item.type === 'video' ? '🎥' : '📄'}
-                  </Text>
+                  {item.type === 'image' || item.type === 'photo' ? (
+                    <Image source={{ uri: item.url }} style={styles.evidenceThumb} resizeMode="cover" />
+                  ) : (
+                    <View style={styles.evidenceThumbPlaceholder}>
+                      <Text style={styles.evidenceItemIcon}>
+                        {item.type === 'video' ? '🎥' : item.type === 'audio' ? '🎵' : '📄'}
+                      </Text>
+                    </View>
+                  )}
                   <View style={styles.evidenceItemInfo}>
                     <Text style={styles.evidenceItemName} numberOfLines={1}>
                       {item.name}
                     </Text>
                     <Text style={styles.evidenceItemType}>
-                      {item.type.toUpperCase()} • 1.5 MB
+                      {item.type.toUpperCase()}{item.size ? ` • ${formatFileSize(item.size)}` : ''}
                     </Text>
                   </View>
                   <TouchableOpacity
@@ -383,35 +488,55 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
             <View style={styles.evidenceOptionRow}>
               <TouchableOpacity
                 style={styles.evidenceOptionBtn}
-                onPress={() => handleAddSampleEvidence('photo')}
+                onPress={() => handlePickMedia('camera')}
+                disabled={isUploadingEvidence}
                 activeOpacity={0.8}
               >
                 <Text style={styles.evidenceOptionIcon}>📸</Text>
-                <Text style={styles.evidenceOptionLabel}>Photo / Image</Text>
+                <Text style={styles.evidenceOptionLabel}>Camera</Text>
+                <Text style={styles.evidenceOptionSub}>Photo / Video</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.evidenceOptionBtn}
-                onPress={() => handleAddSampleEvidence('document')}
+                onPress={() => handlePickMedia('gallery')}
+                disabled={isUploadingEvidence}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.evidenceOptionIcon}>🖼️</Text>
+                <Text style={styles.evidenceOptionLabel}>Gallery</Text>
+                <Text style={styles.evidenceOptionSub}>Choose media</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.evidenceOptionBtn}
+                onPress={() => handlePickMedia('document')}
+                disabled={isUploadingEvidence}
                 activeOpacity={0.8}
               >
                 <Text style={styles.evidenceOptionIcon}>📄</Text>
-                <Text style={styles.evidenceOptionLabel}>PDF Document</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.evidenceOptionBtn}
-                onPress={() => handleAddSampleEvidence('video')}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.evidenceOptionIcon}>📹</Text>
-                <Text style={styles.evidenceOptionLabel}>Video Clip</Text>
+                <Text style={styles.evidenceOptionLabel}>Files / PDF</Text>
+                <Text style={styles.evidenceOptionSub}>Documents</Text>
               </TouchableOpacity>
             </View>
 
+            {isUploadingEvidence && (
+              <View style={styles.uploadProgressBox}>
+                <ActivityIndicator size="small" color="#0D4722" />
+                <Text style={styles.uploadProgressText}>
+                  {uploadProgress !== null && uploadProgress > 0
+                    ? `Uploading file (${uploadProgress}%)...`
+                    : 'Processing and securing file...'}
+                </Text>
+              </View>
+            )}
+
             <TouchableOpacity
               style={styles.cancelModalBtn}
-              onPress={() => setShowEvidenceModal(false)}
+              onPress={() => {
+                if (!isUploadingEvidence) setShowEvidenceModal(false);
+              }}
+              disabled={isUploadingEvidence}
             >
               <Text style={styles.cancelModalBtnText}>Cancel</Text>
             </TouchableOpacity>
@@ -768,9 +893,44 @@ const styles = StyleSheet.create({
   },
   evidenceOptionLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#374151',
+    fontWeight: '700',
+    color: '#111827',
     textAlign: 'center',
+  },
+  evidenceOptionSub: {
+    fontSize: 10,
+    color: '#6B7280',
+    marginTop: 2,
+    textAlign: 'center',
+  },
+  uploadProgressBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#E8F5E9',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  uploadProgressText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0D4722',
+  },
+  evidenceThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    marginRight: 10,
+  },
+  evidenceThumbPlaceholder: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
   },
   cancelModalBtn: {
     paddingVertical: 10,
