@@ -385,6 +385,7 @@ export const CaseDetailScreen = ({ route, navigation }: any) => {
 
           {/* Evidence Section */}
           <EvidenceSection
+            caseId={caseData._id || caseData.caseNumber}
             evidence={caseData.evidence || []}
             isAuthorized={isAssignedToMe}
             onAddEvidence={handleAddEvidence}

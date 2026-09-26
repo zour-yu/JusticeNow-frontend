@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 // @ts-ignore - getReactNativePersistence may not be in the public typings for all Firebase versions
 import { initializeAuth, getReactNativePersistence, getAuth } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Your web app's Firebase configuration extracted from google-services.json
@@ -27,4 +28,8 @@ try {
   auth = getAuth(app);
 }
 
-export { app, auth };
+// Initialize Firebase Storage
+const storage = getStorage(app);
+
+export { app, auth, storage };
+
