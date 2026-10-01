@@ -517,6 +517,18 @@ export const CaseService = {
     return filtered;
   },
 
+  async getCategoryMetrics(): Promise<any[]> {
+    try {
+      const response = await api.get('/cases/metrics/categories');
+      if (response.data && response.data.data) {
+        return response.data.data;
+      }
+    } catch (err) {
+      console.log('Failed to fetch category metrics from backend:', err);
+    }
+    return [];
+  },
+
   async getAssignedCases(status?: CaseStatus): Promise<Case[]> {
     try {
       const url = status ? `/cases/assigned?status=${status}` : '/cases/assigned';
