@@ -2,323 +2,422 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  FlatList,
-  TextInput,
+  ScrollView,
   TouchableOpacity,
-  RefreshControl,
   ActivityIndicator,
   StyleSheet,
   Alert,
+  Dimensions,
+  TextInput,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Complaint, ComplaintStatus, ComplaintCategory } from '../../../shared/types/complaint.types';
-import { ComplaintService } from '../../../shared/services/complaint.service';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useAuthStore } from '../../../shared/store/authStore';
-import { PendingComplaintCard } from '../components/PendingComplaintCard';
-import { CATEGORIES } from '../../complaints/components/CategorySelector';
+import { CaseService } from '../../../shared/services/case.service';
+import { Case, CaseStatus } from '../../../shared/types/case.types';
+import { ComplaintCategory } from '../../../shared/types/complaint.types';
 
-interface Props {
-  navigation: any;
-}
+const { width } = Dimensions.get('window');
 
-type FilterType = 'ALL' | ComplaintCategory;
+// Category metadata based on the design
+const CATEGORY_META: Record<string, { label: string; color: string; bg: string; icon: string }> = {
+  [ComplaintCategory.POLICE_MISCONDUCT]: { label: 'Police Misconduct', color: '#9F1239', bg: '#FFE4E6', icon: 'shield-alt' },
+  [ComplaintCategory.ARBITRARY_DETENTION]: { label: 'Arbitrary Detention', color: '#B45309', bg: '#FEF3C7', icon: 'lock' },
+  [ComplaintCategory.DISCRIMINATION]: { label: 'Discrimination & Hate', color: '#047857', bg: '#D1FAE5', icon: 'balance-scale' },
+  [ComplaintCategory.LABOR_RIGHTS]: { label: 'Labor & Workplace', color: '#4338CA', bg: '#E0E7FF', icon: 'briefcase' },
+  [ComplaintCategory.FREEDOM_OF_EXPRESSION]: { label: 'Speech & Assembly', color: '#15803D', bg: '#DCFCE7', icon: 'bullhorn' },
+  [ComplaintCategory.GENDER_BASED_VIOLENCE]: { label: 'Gender Violence', color: '#BE185D', bg: '#FDF2F8', icon: 'venus-mars' },
+  [ComplaintCategory.CHILD_RIGHTS]: { label: 'Child Rights', color: '#0F766E', bg: '#CCFBF1', icon: 'child' },
+  [ComplaintCategory.OTHER]: { label: 'Other Classifications', color: '#334155', bg: '#F1F5F9', icon: 'folder' },
+};
 
-export const AdminCategorizationListScreen: React.FC<Props> = ({
-  navigation,
-}) => {
+export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ navigation }) => {
   const { user } = useAuthStore();
-  const [complaints, setComplaints] = useState<Complaint[]>([]);
-  const [filteredComplaints, setFilteredComplaints] = useState<Complaint[]>([]);
-  const [metrics, setMetrics] = useState<Record<string, number>>({});
-  const [searchQuery, setSearchQuery] = useState('');
+  const [metrics, setMetrics] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<FilterType>('ALL');
-  const [sortBy, setSortBy] = useState<'NEWEST' | 'PRIORITY'>('NEWEST');
+  const [viewMode, setViewMode] = useState<'CHART' | 'TABLE'>('CHART');
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
-  // Check admin access
   useEffect(() => {
     if (user?.role !== 'ADMIN') {
-      Alert.alert(
-        'Access Denied',
-        'Only administrators can access this section.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      Alert.alert('Access Denied', 'Only administrators can access this section.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
     }
   }, [user, navigation]);
 
-  const loadComplaints = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
-      // Get complaints with SUBMITTED status
-      const data = await ComplaintService.getComplaintsByStatus(
-        ComplaintStatus.SUBMITTED
-      );
-      setComplaints(data);
-
-      // Get metrics
-      const metricsData = await ComplaintService.getComplaintMetrics();
-      if (metricsData.byCategory) {
-        setMetrics(metricsData.byCategory);
-      }
+      const data = await CaseService.getCategoryMetrics();
+      setMetrics(data);
     } catch (err) {
-      console.log('Error loading complaints:', err);
-      Alert.alert('Error', 'Failed to load complaints. Please try again.');
+      console.error('Error loading category metrics:', err);
     } finally {
       setIsLoading(false);
-      setIsRefreshing(false);
     }
   }, []);
 
   useEffect(() => {
-    loadComplaints();
-    const unsubscribe = navigation.addListener('focus', () => {
-      loadComplaints();
-    });
+    loadData();
+    const unsubscribe = navigation.addListener('focus', loadData);
     return unsubscribe;
-  }, [navigation, loadComplaints]);
+  }, [navigation, loadData]);
 
-  // Filter and sort complaints
-  useEffect(() => {
-    let result = [...complaints];
+  // Compute statistics
+  const groupedCases = metrics.map(g => ({
+    ...g,
+    meta: CATEGORY_META[g.category] || CATEGORY_META[ComplaintCategory.OTHER],
+  }));
 
-    // Filter by category
-    if (selectedFilter !== 'ALL') {
-      result = result.filter((item) => item.category === selectedFilter);
-    }
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(
-        (item) =>
-          item.title.toLowerCase().includes(query) ||
-          item.trackingNumber.toLowerCase().includes(query) ||
-          item.citizenName.toLowerCase().includes(query) ||
-          item.incidentLocation?.city.toLowerCase().includes(query)
-      );
-    }
-
-    // Sort
-    if (sortBy === 'PRIORITY') {
-      const priorityOrder = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
-      result.sort(
-        (a, b) =>
-          (priorityOrder[a.priority as keyof typeof priorityOrder] || 4) -
-          (priorityOrder[b.priority as keyof typeof priorityOrder] || 4)
-      );
-    } else {
-      result.sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
-    }
-
-    setFilteredComplaints(result);
-  }, [complaints, selectedFilter, searchQuery, sortBy]);
-
-  const onRefresh = () => {
-    setIsRefreshing(true);
-    loadComplaints();
-  };
-
-  const handleCardPress = (complaint: Complaint) => {
-    navigation.navigate('AdminCategorizationDetail', {
-      complaintId: complaint._id || complaint.trackingNumber,
-      complaint,
-    });
-  };
-
-  const getCategoryCount = (category: ComplaintCategory): number => {
-    return metrics[category] || 0;
-  };
+  const totalCases = groupedCases.reduce((acc, g) => acc + g.total, 0);
+  const topViolation = groupedCases.length > 0 ? groupedCases[0] : null;
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <SafeAreaView style={styles.container}>
+      {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.headerIconBtn}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color="#0D4722" />
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color="#0F172A" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Categorize Complaints</Text>
-        <View style={styles.headerIconBtn} />
+        <Text style={styles.headerTitle}>Violations By Category</Text>
+        <TouchableOpacity style={styles.headerIcon}>
+          <Ionicons name="options-outline" size={22} color="#0F172A" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.headerAvatar}>
+          <Ionicons name="person-circle" size={32} color="#022C22" />
+        </TouchableOpacity>
       </View>
 
-      {/* Stats Banner */}
-      <View style={styles.statsBanner}>
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Total</Text>
-          <Text style={styles.statNumber}>{complaints.length}</Text>
-        </View>
-        <View style={styles.statDivider} />
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>Pending</Text>
-          <Text style={styles.statNumber}>{filteredComplaints.length}</Text>
-        </View>
-      </View>
-
-      {/* Search Bar */}
-      <View style={styles.searchBarContainer}>
-        <Ionicons name="search-outline" size={18} color="#94A3B8" />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search by title, ref, citizen, or location..."
-          placeholderTextColor="#94A3B8"
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-        />
-        {searchQuery.length > 0 && (
-          <TouchableOpacity onPress={() => setSearchQuery('')}>
-            <Ionicons name="close-outline" size={18} color="#94A3B8" />
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+        {/* CONTEXT BAR */}
+        <View style={styles.contextBar}>
+          <View style={styles.contextLeft}>
+            <View style={styles.totalPill}>
+              <View style={styles.totalDot} />
+              <Text style={styles.totalPillText}>Total Cases: {totalCases}</Text>
+            </View>
+            <View style={styles.auditPill}>
+              <Text style={styles.auditPillText}>Q2 Audit</Text>
+            </View>
+          </View>
+          <TouchableOpacity style={styles.exportBtn}>
+            <Ionicons name="download-outline" size={16} color="#0F172A" />
+            <Text style={styles.exportBtnText}>Export View</Text>
           </TouchableOpacity>
-        )}
-      </View>
+        </View>
 
-      {/* Category Filter */}
-      <View style={styles.filterSection}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={[
-            { key: 'ALL', label: 'All', icon: undefined, count: complaints.length },
-            ...CATEGORIES.map((cat) => ({
-              key: cat.key,
-              label: cat.label,
-              icon: cat.icon,
-              count: getCategoryCount(cat.key),
-            })),
-          ]}
-          keyExtractor={(item) => item.key}
-          contentContainerStyle={styles.filterList}
-          renderItem={({ item }) => {
-            const isActive = selectedFilter === item.key;
-            return (
-              <TouchableOpacity
-                style={[
-                  styles.filterChip,
-                  isActive && styles.filterChipActive,
-                ]}
-                onPress={() => setSelectedFilter(item.key as FilterType)}
-              >
-                {item.icon && (
-                  <Text style={styles.filterChipIcon}>{item.icon}</Text>
-                )}
-                <Text
-                  style={[
-                    styles.filterChipText,
-                    isActive && styles.filterChipTextActive,
-                  ]}
-                >
-                  {item.label}
-                </Text>
-                {item.count > 0 && (
-                  <View
-                    style={[
-                      styles.filterChipBadge,
-                      isActive && styles.filterChipBadgeActive,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.filterChipBadgeText,
-                        isActive && styles.filterChipBadgeTextActive,
-                      ]}
-                    >
-                      {item.count}
+        <Text style={styles.contextDesc}>
+          Overview of reported human rights cases grouped by legal classification.
+        </Text>
+
+        {/* TIME FILTERS */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContainer}>
+          <View style={[styles.filterPill, styles.filterPillActive]}>
+            <Text style={[styles.filterPillText, styles.filterPillTextActive]}>All Time</Text>
+          </View>
+          <View style={styles.filterPill}>
+            <Text style={styles.filterPillText}>Last 30 Days</Text>
+          </View>
+          <View style={styles.filterPill}>
+            <Text style={styles.filterPillText}>This Quarter</Text>
+          </View>
+          <View style={styles.filterPill}>
+            <Text style={styles.filterPillText}>By Region</Text>
+          </View>
+        </ScrollView>
+
+        {/* VIEW SWITCHER */}
+        <View style={styles.switcherContainer}>
+          <TouchableOpacity
+            style={[styles.switcherTab, viewMode === 'CHART' && styles.switcherTabActive]}
+            onPress={() => setViewMode('CHART')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="bar-chart" size={16} color={viewMode === 'CHART' ? '#FFF' : '#0F172A'} />
+            <Text style={[styles.switcherTabText, viewMode === 'CHART' && styles.switcherTabTextActive]}>Chart View</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.switcherTab, viewMode === 'TABLE' && styles.switcherTabActive]}
+            onPress={() => setViewMode('TABLE')}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="list" size={16} color={viewMode === 'TABLE' ? '#FFF' : '#0F172A'} />
+            <Text style={[styles.switcherTabText, viewMode === 'TABLE' && styles.switcherTabTextActive]}>Table View</Text>
+          </TouchableOpacity>
+        </View>
+
+        {isLoading ? (
+          <ActivityIndicator size="large" color="#0D4722" style={{ marginTop: 40 }} />
+        ) : (
+          <>
+            {viewMode === 'CHART' && (
+              <>
+                {/* METRIC CARDS */}
+                <View style={styles.metricsRow}>
+                  <View style={styles.metricCard}>
+                    <View style={styles.metricHeader}>
+                      <Text style={styles.metricTitle}>TOP VIOLATION TYPE</Text>
+                      <View style={styles.metricIconBox}>
+                        <Ionicons name="warning-outline" size={12} color="#9F1239" />
+                      </View>
+                    </View>
+                    <Text style={styles.metricValueName} numberOfLines={2}>
+                      {topViolation?.meta.label || 'N/A'}
                     </Text>
+                    <View style={styles.metricBottom}>
+                      <Text style={styles.metricValueNum}>{topViolation?.total || 0}</Text>
+                      <Text style={styles.metricValueSub}>
+                        {totalCases > 0 ? Math.round(((topViolation?.total || 0) / totalCases) * 100) : 0}% of total
+                      </Text>
+                    </View>
+                    <View style={[styles.metricBar, { backgroundColor: topViolation?.meta.bg }]}>
+                      <View style={[styles.metricBarFill, { width: '80%', backgroundColor: topViolation?.meta.color }]} />
+                    </View>
                   </View>
-                )}
-              </TouchableOpacity>
-            );
-          }}
-          scrollEventThrottle={16}
-        />
-      </View>
 
-      {/* Sort Options */}
-      <View style={styles.sortContainer}>
-        <TouchableOpacity
-          style={[
-            styles.sortButton,
-            sortBy === 'PRIORITY' && styles.sortButtonActive,
-          ]}
-          onPress={() => setSortBy('PRIORITY')}
-        >
-          <Ionicons
-            name="flame-outline"
-            size={16}
-            color={sortBy === 'PRIORITY' ? '#FFFFFF' : '#64748B'}
-          />
-          <Text
-            style={[
-              styles.sortButtonText,
-              sortBy === 'PRIORITY' && styles.sortButtonTextActive,
-            ]}
-          >
-            Priority
-          </Text>
+                  <View style={styles.metricCard}>
+                    <View style={styles.metricHeader}>
+                      <Text style={styles.metricTitle}>FASTEST GROWING</Text>
+                      <View style={[styles.metricIconBox, { backgroundColor: '#FEE2E2' }]}>
+                        <Ionicons name="trending-up" size={12} color="#B91C1C" />
+                      </View>
+                    </View>
+                    <Text style={styles.metricValueName} numberOfLines={2}>
+                      Arbitrary Detention
+                    </Text>
+                    <View style={styles.metricBottom}>
+                      <Text style={styles.metricValueNum}>35</Text>
+                      <Text style={[styles.metricValueSub, { color: '#047857' }]}>+14% MoM</Text>
+                    </View>
+                    <View style={[styles.metricBar, { backgroundColor: '#ECFDF5' }]}>
+                      <View style={[styles.metricBarFill, { width: '40%', backgroundColor: '#059669' }]} />
+                    </View>
+                  </View>
+                </View>
+
+                {/* DISTRIBUTION BREAKDOWN */}
+                <View style={styles.breakdownCard}>
+                  <View style={styles.breakdownHeader}>
+                    <View>
+                      <Text style={styles.breakdownTitle}>Distribution Breakdown</Text>
+                      <Text style={styles.breakdownSub}>Validated civil & institutional complaints</Text>
+                    </View>
+                    <View style={styles.totalBadge}>
+                      <Text style={styles.totalBadgeText}>{totalCases}</Text>
+                      <Text style={styles.totalBadgeSub}>Reports</Text>
+                    </View>
+                  </View>
+
+                  {/* Horizontal Bar Chart */}
+                  <View style={styles.stackedBar}>
+                    {groupedCases.map((g, i) => (
+                      <View
+                        key={g.category}
+                        style={{
+                          flex: g.total,
+                          backgroundColor: g.meta.color,
+                          borderTopLeftRadius: i === 0 ? 8 : 0,
+                          borderBottomLeftRadius: i === 0 ? 8 : 0,
+                          borderTopRightRadius: i === groupedCases.length - 1 ? 8 : 0,
+                          borderBottomRightRadius: i === groupedCases.length - 1 ? 8 : 0,
+                          borderRightWidth: i !== groupedCases.length - 1 ? 2 : 0,
+                          borderColor: '#FFF',
+                        }}
+                      />
+                    ))}
+                  </View>
+
+                  {/* Category List */}
+                  <View style={styles.categoryList}>
+                    {groupedCases.map((g, index) => {
+                      const pct = Math.round((g.total / totalCases) * 100);
+                      return (
+                        <View key={g.category} style={styles.catListItem}>
+                          <View style={styles.catListLeft}>
+                            <Text style={styles.catListNum}>{index + 1}.</Text>
+                            <Text style={styles.catListName}>{g.meta.label}</Text>
+                          </View>
+                          <View style={styles.catListRight}>
+                            <Text style={styles.catListTotal}>{g.total}</Text>
+                            <View style={[styles.pctBadge, { backgroundColor: g.meta.bg }]}>
+                              <Text style={[styles.pctBadgeText, { color: g.meta.color }]}>{pct}%</Text>
+                            </View>
+                          </View>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+
+                {/* CATEGORY ACCORDION */}
+                <View style={styles.registryHeader}>
+                  <View>
+                    <Text style={styles.registryTitle}>Category Case Registry</Text>
+                    <Text style={styles.registrySub}>Status overview and linked records</Text>
+                  </View>
+                  <View style={styles.registryLegend}>
+                    <View style={[styles.legendDot, { backgroundColor: '#022C22' }]} />
+                    <Text style={styles.legendText}>Active</Text>
+                    <View style={[styles.legendDot, { backgroundColor: '#CBD5E1' }]} />
+                    <Text style={styles.legendText}>Closed</Text>
+                  </View>
+                </View>
+
+                {groupedCases.map(g => {
+                  const isExpanded = expandedCategory === g.category;
+                  return (
+                    <View key={g.category} style={styles.accordionCard}>
+                      <TouchableOpacity
+                        style={styles.accordionHeader}
+                        activeOpacity={0.7}
+                        onPress={() => setExpandedCategory(isExpanded ? null : g.category)}
+                      >
+                        <View style={styles.accLeft}>
+                          <View style={[styles.accIconBox, { backgroundColor: g.meta.bg }]}>
+                            <FontAwesome5 name={g.meta.icon} size={16} color={g.meta.color} />
+                          </View>
+                          <View>
+                            <Text style={styles.accTitle}>{g.meta.label}</Text>
+                            <Text style={styles.accSub}>
+                              {g.active} Active • {g.resolved} Resolved
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={styles.accRight}>
+                          <View style={styles.accTotalBadge}>
+                            <Text style={styles.accTotalText}>{g.total} Total</Text>
+                          </View>
+                          <Ionicons
+                            name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                            size={20}
+                            color="#0F172A"
+                          />
+                        </View>
+                      </TouchableOpacity>
+
+                      {isExpanded && (
+                        <View style={styles.accContent}>
+                          {g.cases.slice(0, 3).map((c: any, idx: number) => (
+                            <View key={c._id || idx.toString()} style={styles.innerCaseCard}>
+                              <View style={styles.innerHeader}>
+                                <Text style={styles.innerCaseId}>Case #{c.caseNumber}</Text>
+                                <View style={styles.innerStatusBadge}>
+                                  <Text style={styles.innerStatusText}>{c.status}</Text>
+                                </View>
+                              </View>
+                              <Text style={styles.innerCaseSub}>
+                                {c.complaintDetails?.citizenName || 'Unknown'} • Filed {new Date(c.createdAt || Date.now()).toLocaleDateString()}
+                              </Text>
+                              <View style={styles.innerFooter}>
+                                <Text style={styles.innerLoc} numberOfLines={1}>
+                                  {c.complaintDetails?.incidentLocation?.city || 'Unknown Location'} • {c.title}
+                                </Text>
+                                <TouchableOpacity style={styles.reviewBtn}>
+                                  <Text style={styles.reviewBtnText}>Review</Text>
+                                  <Ionicons name="arrow-forward" size={14} color="#0F172A" />
+                                </TouchableOpacity>
+                              </View>
+                            </View>
+                          ))}
+                          {g.cases.length > 3 && (
+                            <TouchableOpacity style={styles.viewMoreBtn}>
+                              <Text style={styles.viewMoreText}>View All {g.cases.length} Cases</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+              </>
+            )}
+
+            {viewMode === 'TABLE' && (
+              <View style={styles.tableCard}>
+                <View style={styles.tableSearchRow}>
+                  <View style={styles.searchBox}>
+                    <Ionicons name="search" size={18} color="#64748B" />
+                    <TextInput placeholder="Search category..." style={styles.searchInput} placeholderTextColor="#94A3B8" />
+                  </View>
+                </View>
+                <View style={styles.tableControls}>
+                  <TouchableOpacity style={styles.controlBtn}>
+                    <Ionicons name="filter" size={16} color="#0F172A" />
+                    <Text style={styles.controlBtnText}>Sort: Total Cases</Text>
+                    <Ionicons name="chevron-down" size={14} color="#64748B" />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.controlBtn}>
+                    <Ionicons name="options" size={16} color="#0F172A" />
+                    <Text style={styles.controlBtnText}>Columns</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.matrixHeader}>
+                  <View style={styles.matrixTitleRow}>
+                    <View style={[styles.legendDot, { backgroundColor: '#022C22' }]} />
+                    <Text style={styles.matrixTitle}>Category Matrix</Text>
+                  </View>
+                  <View style={styles.classificationsBadge}>
+                    <Text style={styles.classificationsText}>{groupedCases.length} Classifications</Text>
+                  </View>
+                </View>
+
+                {groupedCases.map((g) => {
+                  const pct = Math.round((g.total / totalCases) * 100);
+                  const resRate = Math.round((g.resolved / Math.max(g.total, 1)) * 100);
+                  return (
+                    <View key={g.category} style={styles.matrixRow}>
+                      <View style={styles.matrixTop}>
+                        <View style={[styles.accIconBox, { backgroundColor: g.meta.bg }]}>
+                          <FontAwesome5 name={g.meta.icon} size={16} color={g.meta.color} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.matrixRowTitle} numberOfLines={1}>{g.meta.label}</Text>
+                          <Text style={styles.matrixRowSub} numberOfLines={1}>Detailed tracking reports</Text>
+                        </View>
+                        <View style={styles.matrixRowRight}>
+                          <Text style={styles.matrixRowTotal}>{g.total}</Text>
+                          <Text style={styles.matrixRowPct}>{pct}% Share</Text>
+                        </View>
+                      </View>
+                      <View style={styles.matrixStats}>
+                        <View style={styles.statBox}>
+                          <Text style={styles.statLabel}>Active Cases</Text>
+                          <Text style={styles.statValueActive}>• {g.active} Active</Text>
+                        </View>
+                        <View style={styles.statBox}>
+                          <Text style={styles.statLabel}>Resolved</Text>
+                          <Text style={styles.statValueClosed}>• {g.resolved} Closed</Text>
+                        </View>
+                        <View style={styles.statBox}>
+                          <Text style={styles.statLabel}>Res. Rate</Text>
+                          <Text style={styles.statValueNormal}>{resRate}%</Text>
+                          <View style={styles.resBarBg}>
+                            <View style={[styles.resBarFill, { width: `${resRate}%` }]} />
+                          </View>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </>
+        )}
+
+        <View style={{ height: 40 }} />
+      </ScrollView>
+
+      {/* FIXED BOTTOM ACTIONS */}
+      <View style={styles.bottomActions}>
+        <TouchableOpacity style={styles.exportPrimaryBtn}>
+          <Ionicons name="document-text-outline" size={18} color="#FFF" />
+          <Text style={styles.exportPrimaryText}>Export Report (PDF / CSV)</Text>
         </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.sortButton,
-            sortBy === 'NEWEST' && styles.sortButtonActive,
-          ]}
-          onPress={() => setSortBy('NEWEST')}
-        >
-          <Ionicons
-            name="time-outline"
-            size={16}
-            color={sortBy === 'NEWEST' ? '#FFFFFF' : '#64748B'}
-          />
-          <Text
-            style={[
-              styles.sortButtonText,
-              sortBy === 'NEWEST' && styles.sortButtonTextActive,
-            ]}
-          >
-            Newest
-          </Text>
+        <TouchableOpacity style={styles.scheduleBtn}>
+          <Ionicons name="calendar-outline" size={18} color="#0F172A" />
+          <Text style={styles.scheduleText}>Schedule Legal Briefing</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Complaints List */}
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={styles.loadingText}>Loading complaints...</Text>
-        </View>
-      ) : filteredComplaints.length === 0 ? (
-        <View style={styles.emptyStateContainer}>
-          <Ionicons name="layers-outline" size={56} color="#CBD5E1" />
-          <Text style={styles.emptyStateTitle}>
-            {searchQuery ? 'No Results' : 'No Complaints'}
-          </Text>
-          <Text style={styles.emptyStateSubtitle}>
-            {searchQuery
-              ? 'Try a different search term'
-              : selectedFilter !== 'ALL'
-              ? `No complaints in ${CATEGORIES.find((c) => c.key === selectedFilter)?.label}`
-              : 'No complaints awaiting categorization'}
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredComplaints}
-          keyExtractor={(item) => item._id || item.trackingNumber}
-          renderItem={({ item }) => (
-            <PendingComplaintCard complaint={item} onPress={handleCardPress} />
-          )}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
-          }
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -329,194 +428,661 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
     paddingTop: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    paddingBottom: 16,
   },
-  headerIconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+  backBtn: {
+    padding: 8,
   },
   headerTitle: {
+    flex: 1,
     fontSize: 18,
     fontWeight: '700',
     color: '#0F172A',
+    marginLeft: 8,
   },
-  statsBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+  headerIcon: {
+    padding: 8,
+    marginRight: 8,
   },
-  statItem: {
+  headerAvatar: {
+    padding: 2,
+  },
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 160,
+  },
+  contextBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 8,
   },
-  statLabel: {
-    fontSize: 11,
-    color: '#94A3B8',
-    textTransform: 'uppercase',
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  statNumber: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#3B82F6',
-  },
-  statDivider: {
-    width: 1,
-    height: 30,
-    backgroundColor: '#E2E8F0',
-    marginHorizontal: 8,
-  },
-  searchBarContainer: {
+  contextLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  totalPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#022C22',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 6,
+  },
+  totalDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#34D399',
+  },
+  totalPillText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  auditPill: {
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  auditPillText: {
+    color: '#065F46',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  exportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  exportBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  contextDesc: {
+    fontSize: 13,
+    color: '#64748B',
+    marginBottom: 20,
+    lineHeight: 18,
+  },
+  filterScroll: {
+    marginBottom: 20,
+  },
+  filterContainer: {
+    gap: 8,
+  },
+  filterPill: {
     paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 20,
+  },
+  filterPillActive: {
+    backgroundColor: '#022C22',
+  },
+  filterPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  filterPillTextActive: {
+    color: '#FFF',
+  },
+  switcherContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#EAEFFF',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 24,
+  },
+  switcherTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 0,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderRadius: 10,
+    gap: 8,
+  },
+  switcherTabActive: {
+    backgroundColor: '#0D4722',
+  },
+  switcherTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  switcherTabTextActive: {
+    color: '#FFF',
+  },
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  metricCard: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  metricHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  metricTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#64748B',
+    letterSpacing: 0.5,
+  },
+  metricIconBox: {
+    backgroundColor: '#FFE4E6',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metricValueName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 12,
+    height: 40,
+  },
+  metricBottom: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    marginBottom: 12,
+  },
+  metricValueNum: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  metricValueSub: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E11D48',
+    marginBottom: 4,
+  },
+  metricBar: {
+    height: 4,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  metricBarFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  breakdownCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    marginBottom: 32,
+  },
+  breakdownHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
+  breakdownTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  breakdownSub: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  totalBadge: {
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  totalBadgeText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#065F46',
+  },
+  totalBadgeSub: {
+    fontSize: 10,
+    color: '#065F46',
+    fontWeight: '600',
+  },
+  stackedBar: {
+    flexDirection: 'row',
+    height: 12,
+    borderRadius: 8,
+    marginBottom: 24,
+  },
+  categoryList: {
+    gap: 16,
+  },
+  catListItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  catListLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  catListNum: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  catListName: {
+    fontSize: 13,
+    color: '#0F172A',
+    fontWeight: '600',
+  },
+  catListRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  catListTotal: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  pctBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    minWidth: 46,
+    alignItems: 'center',
+  },
+  pctBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  registryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginBottom: 16,
+  },
+  registryTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  registrySub: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  registryLegend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  legendDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  legendText: {
+    fontSize: 10,
+    color: '#475569',
+    fontWeight: '500',
+    marginRight: 4,
+  },
+  accordionCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    overflow: 'hidden',
+  },
+  accordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+  },
+  accLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  accIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  accTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 4,
+  },
+  accSub: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  accRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  accTotalBadge: {
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  accTotalText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  accContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingTop: 16,
+    gap: 12,
+  },
+  innerCaseCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 16,
+  },
+  innerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  innerCaseId: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  innerStatusBadge: {
+    backgroundColor: '#D1FAE5',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  innerStatusText: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#065F46',
+  },
+  innerCaseSub: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 12,
+  },
+  innerFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  innerLoc: {
+    flex: 1,
+    fontSize: 12,
+    color: '#94A3B8',
+    marginRight: 12,
+  },
+  reviewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  reviewBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  viewMoreBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  viewMoreText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#0D4722',
+  },
+  tableCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  tableSearchRow: {
+    marginBottom: 16,
+  },
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 44,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  tableControls: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 24,
+  },
+  controlBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    height: 40,
+    gap: 8,
+  },
+  controlBtnText: {
     fontSize: 13,
+    fontWeight: '600',
     color: '#0F172A',
-    paddingVertical: 0,
   },
-  filterSection: {
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+  matrixHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 4,
   },
-  filterList: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  filterChip: {
+  matrixTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    gap: 8,
   },
-  filterChipActive: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
+  matrixTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
   },
-  filterChipIcon: {
-    fontSize: 14,
+  classificationsBadge: {
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-  filterChipText: {
-    fontSize: 12,
+  classificationsText: {
+    fontSize: 11,
     fontWeight: '600',
+    color: '#166534',
+  },
+  matrixRow: {
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+    paddingVertical: 16,
+  },
+  matrixTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 16,
+  },
+  matrixRowTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  matrixRowSub: {
+    fontSize: 12,
     color: '#64748B',
   },
-  filterChipTextActive: {
-    color: '#FFFFFF',
+  matrixRowRight: {
+    alignItems: 'flex-end',
   },
-  filterChipBadge: {
-    backgroundColor: '#E2E8F0',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginLeft: 4,
+  matrixRowTotal: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginBottom: 2,
   },
-  filterChipBadgeActive: {
-    backgroundColor: '#FFFFFF',
-  },
-  filterChipBadgeText: {
+  matrixRowPct: {
     fontSize: 10,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  filterChipBadgeTextActive: {
-    color: '#3B82F6',
-  },
-  sortContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-  },
-  sortButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  sortButtonActive: {
-    backgroundColor: '#3B82F6',
-    borderColor: '#3B82F6',
-  },
-  sortButtonText: {
-    fontSize: 12,
     fontWeight: '600',
-    color: '#64748B',
+    color: '#9F1239',
   },
-  sortButtonTextActive: {
-    color: '#FFFFFF',
+  matrixStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 12,
   },
-  loadingContainer: {
+  statBox: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
+  statLabel: {
+    fontSize: 10,
     color: '#64748B',
+    fontWeight: '600',
+    marginBottom: 4,
   },
-  emptyStateContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
+  statValueActive: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#E11D48',
   },
-  emptyStateTitle: {
-    fontSize: 18,
+  statValueClosed: {
+    fontSize: 12,
     fontWeight: '700',
     color: '#0F172A',
-    marginTop: 16,
   },
-  emptyStateSubtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    marginTop: 8,
-    textAlign: 'center',
+  statValueNormal: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 6,
   },
-  listContent: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingBottom: 20,
+  resBarBg: {
+    height: 4,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 2,
+    width: '80%',
+  },
+  resBarFill: {
+    height: '100%',
+    backgroundColor: '#0F172A',
+    borderRadius: 2,
+  },
+  bottomActions: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFF',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 32,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    gap: 12,
+  },
+  exportPrimaryBtn: {
+    backgroundColor: '#022C22',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    borderRadius: 12,
+    gap: 8,
+  },
+  exportPrimaryText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  scheduleBtn: {
+    backgroundColor: '#EFF6FF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 52,
+    borderRadius: 12,
+    gap: 8,
+  },
+  scheduleText: {
+    color: '#1E40AF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
