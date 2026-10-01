@@ -37,6 +37,13 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'CHART' | 'TABLE'>('CHART');
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  
+  // Filter states
+  const [timeFilter, setTimeFilter] = useState<'ALL' | 'LAST_30' | 'THIS_QUARTER'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortMode, setSortMode] = useState<'TOTAL_CASES' | 'ACTIVE_CASES'>('TOTAL_CASES');
+  const [showColumnsFilter, setShowColumnsFilter] = useState(false);
+  const [columns, setColumns] = useState({ active: true, resolved: true, rate: true });
 
   useEffect(() => {
     if (user?.role !== 'ADMIN') {
@@ -61,11 +68,58 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
     return unsubscribe;
   }, [navigation, loadData]);
 
-  // Compute statistics
-  const groupedCases = metrics.map(g => ({
-    ...g,
-    meta: CATEGORY_META[g.category] || CATEGORY_META[ComplaintCategory.OTHER],
-  }));
+  // Compute filtered statistics
+  const groupedCases = React.useMemo(() => {
+    let processed = metrics.map(g => {
+      // 1. Time Filter
+      let filteredCases = g.cases || [];
+      if (timeFilter === 'LAST_30') {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        filteredCases = filteredCases.filter((c: any) => new Date(c.createdAt) >= thirtyDaysAgo);
+      } else if (timeFilter === 'THIS_QUARTER') {
+        const now = new Date();
+        const currentQuarter = Math.floor(now.getMonth() / 3);
+        filteredCases = filteredCases.filter((c: any) => {
+           const d = new Date(c.createdAt);
+           return d.getFullYear() === now.getFullYear() && Math.floor(d.getMonth() / 3) === currentQuarter;
+        });
+      }
+
+      // Re-calculate totals based on filtered cases
+      const total = filteredCases.length;
+      const active = filteredCases.filter((c: any) => c.status !== CaseStatus.RESOLVED && c.status !== CaseStatus.CLOSED).length;
+      const resolved = filteredCases.filter((c: any) => c.status === CaseStatus.RESOLVED || c.status === CaseStatus.CLOSED).length;
+
+      return {
+        ...g,
+        cases: filteredCases,
+        total,
+        active,
+        resolved,
+        meta: CATEGORY_META[g.category] || CATEGORY_META[ComplaintCategory.OTHER],
+      };
+    }).filter(g => g.total > 0);
+
+    // 2. Search Query (Table View)
+    if (viewMode === 'TABLE' && searchQuery.trim()) {
+      processed = processed.filter(g => g.meta.label.toLowerCase().includes(searchQuery.toLowerCase()));
+    }
+
+    // 3. Sorting (Table View)
+    if (viewMode === 'TABLE') {
+       if (sortMode === 'TOTAL_CASES') {
+          processed = processed.sort((a, b) => b.total - a.total);
+       } else if (sortMode === 'ACTIVE_CASES') {
+          processed = processed.sort((a, b) => b.active - a.active);
+       }
+    } else {
+       // Chart view default sort
+       processed = processed.sort((a, b) => b.total - a.total);
+    }
+
+    return processed;
+  }, [metrics, timeFilter, searchQuery, sortMode, viewMode]);
 
   const totalCases = groupedCases.reduce((acc, g) => acc + g.total, 0);
   const topViolation = groupedCases.length > 0 ? groupedCases[0] : null;
@@ -78,9 +132,6 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
           <Ionicons name="arrow-back" size={24} color="#0F172A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Violations By Category</Text>
-        <TouchableOpacity style={styles.headerIcon}>
-          <Ionicons name="options-outline" size={22} color="#0F172A" />
-        </TouchableOpacity>
         <TouchableOpacity style={styles.headerAvatar}>
           <Ionicons name="person-circle" size={32} color="#022C22" />
         </TouchableOpacity>
@@ -91,11 +142,7 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
         <View style={styles.contextBar}>
           <View style={styles.contextLeft}>
             <View style={styles.totalPill}>
-              <View style={styles.totalDot} />
               <Text style={styles.totalPillText}>Total Cases: {totalCases}</Text>
-            </View>
-            <View style={styles.auditPill}>
-              <Text style={styles.auditPillText}>Q2 Audit</Text>
             </View>
           </View>
           <TouchableOpacity style={styles.exportBtn}>
@@ -110,15 +157,24 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
 
         {/* TIME FILTERS */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContainer}>
-          <View style={[styles.filterPill, styles.filterPillActive]}>
-            <Text style={[styles.filterPillText, styles.filterPillTextActive]}>All Time</Text>
-          </View>
-          <View style={styles.filterPill}>
-            <Text style={styles.filterPillText}>Last 30 Days</Text>
-          </View>
-          <View style={styles.filterPill}>
-            <Text style={styles.filterPillText}>This Quarter</Text>
-          </View>
+          <TouchableOpacity 
+            style={[styles.filterPill, timeFilter === 'ALL' && styles.filterPillActive]}
+            onPress={() => setTimeFilter('ALL')}
+          >
+            <Text style={[styles.filterPillText, timeFilter === 'ALL' && styles.filterPillTextActive]}>All Time</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.filterPill, timeFilter === 'LAST_30' && styles.filterPillActive]}
+            onPress={() => setTimeFilter('LAST_30')}
+          >
+            <Text style={[styles.filterPillText, timeFilter === 'LAST_30' && styles.filterPillTextActive]}>Last 30 Days</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.filterPill, timeFilter === 'THIS_QUARTER' && styles.filterPillActive]}
+            onPress={() => setTimeFilter('THIS_QUARTER')}
+          >
+            <Text style={[styles.filterPillText, timeFilter === 'THIS_QUARTER' && styles.filterPillTextActive]}>This Quarter</Text>
+          </TouchableOpacity>
           <View style={styles.filterPill}>
             <Text style={styles.filterPillText}>By Region</Text>
           </View>
@@ -335,20 +391,57 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
                 <View style={styles.tableSearchRow}>
                   <View style={styles.searchBox}>
                     <Ionicons name="search" size={18} color="#64748B" />
-                    <TextInput placeholder="Search category..." style={styles.searchInput} placeholderTextColor="#94A3B8" />
+                    <TextInput 
+                      placeholder="Search category..." 
+                      style={styles.searchInput} 
+                      placeholderTextColor="#94A3B8" 
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                    />
                   </View>
                 </View>
                 <View style={styles.tableControls}>
-                  <TouchableOpacity style={styles.controlBtn}>
+                  <TouchableOpacity 
+                    style={styles.controlBtn} 
+                    onPress={() => setSortMode(sortMode === 'TOTAL_CASES' ? 'ACTIVE_CASES' : 'TOTAL_CASES')}
+                  >
                     <Ionicons name="filter" size={16} color="#0F172A" />
-                    <Text style={styles.controlBtnText}>Sort: Total Cases</Text>
+                    <Text style={styles.controlBtnText}>
+                      Sort: {sortMode === 'TOTAL_CASES' ? 'Total Cases' : 'Active Cases'}
+                    </Text>
                     <Ionicons name="chevron-down" size={14} color="#64748B" />
                   </TouchableOpacity>
-                  <TouchableOpacity style={styles.controlBtn}>
-                    <Ionicons name="options" size={16} color="#0F172A" />
-                    <Text style={styles.controlBtnText}>Columns</Text>
+                  <TouchableOpacity 
+                    style={[styles.controlBtn, showColumnsFilter && { borderColor: '#0D4722', backgroundColor: '#F0FDF4' }]} 
+                    onPress={() => setShowColumnsFilter(!showColumnsFilter)}
+                  >
+                    <Ionicons name="options" size={16} color={showColumnsFilter ? '#0D4722' : '#0F172A'} />
+                    <Text style={[styles.controlBtnText, showColumnsFilter && { color: '#0D4722' }]}>Columns</Text>
                   </TouchableOpacity>
                 </View>
+
+                {showColumnsFilter && (
+                  <View style={styles.columnFiltersRow}>
+                    <TouchableOpacity 
+                      style={[styles.colToggleBtn, columns.active && styles.colToggleBtnActive]} 
+                      onPress={() => setColumns(p => ({...p, active: !p.active}))}
+                    >
+                      <Text style={[styles.colToggleText, columns.active && styles.colToggleTextActive]}>Active Cases</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.colToggleBtn, columns.resolved && styles.colToggleBtnActive]} 
+                      onPress={() => setColumns(p => ({...p, resolved: !p.resolved}))}
+                    >
+                      <Text style={[styles.colToggleText, columns.resolved && styles.colToggleTextActive]}>Resolved</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                      style={[styles.colToggleBtn, columns.rate && styles.colToggleBtnActive]} 
+                      onPress={() => setColumns(p => ({...p, rate: !p.rate}))}
+                    >
+                      <Text style={[styles.colToggleText, columns.rate && styles.colToggleTextActive]}>Res. Rate</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
                 <View style={styles.matrixHeader}>
                   <View style={styles.matrixTitleRow}>
@@ -379,21 +472,27 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
                         </View>
                       </View>
                       <View style={styles.matrixStats}>
-                        <View style={styles.statBox}>
-                          <Text style={styles.statLabel}>Active Cases</Text>
-                          <Text style={styles.statValueActive}>• {g.active} Active</Text>
-                        </View>
-                        <View style={styles.statBox}>
-                          <Text style={styles.statLabel}>Resolved</Text>
-                          <Text style={styles.statValueClosed}>• {g.resolved} Closed</Text>
-                        </View>
-                        <View style={styles.statBox}>
-                          <Text style={styles.statLabel}>Res. Rate</Text>
-                          <Text style={styles.statValueNormal}>{resRate}%</Text>
-                          <View style={styles.resBarBg}>
-                            <View style={[styles.resBarFill, { width: `${resRate}%` }]} />
+                        {columns.active && (
+                          <View style={styles.statBox}>
+                            <Text style={styles.statLabel}>Active Cases</Text>
+                            <Text style={styles.statValueActive}>• {g.active} Active</Text>
                           </View>
-                        </View>
+                        )}
+                        {columns.resolved && (
+                          <View style={styles.statBox}>
+                            <Text style={styles.statLabel}>Resolved</Text>
+                            <Text style={styles.statValueClosed}>• {g.resolved} Closed</Text>
+                          </View>
+                        )}
+                        {columns.rate && (
+                          <View style={styles.statBox}>
+                            <Text style={styles.statLabel}>Res. Rate</Text>
+                            <Text style={styles.statValueNormal}>{resRate}%</Text>
+                            <View style={styles.resBarBg}>
+                              <View style={[styles.resBarFill, { width: `${resRate}%` }]} />
+                            </View>
+                          </View>
+                        )}
                       </View>
                     </View>
                   );
@@ -412,10 +511,7 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
           <Ionicons name="document-text-outline" size={18} color="#FFF" />
           <Text style={styles.exportPrimaryText}>Export Report (PDF / CSV)</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.scheduleBtn}>
-          <Ionicons name="calendar-outline" size={18} color="#0F172A" />
-          <Text style={styles.scheduleText}>Schedule Legal Briefing</Text>
-        </TouchableOpacity>
+
       </View>
     </SafeAreaView>
   );
@@ -442,10 +538,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0F172A',
     marginLeft: 8,
-  },
-  headerIcon: {
-    padding: 8,
-    marginRight: 8,
   },
   headerAvatar: {
     padding: 2,
@@ -475,27 +567,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
-    gap: 6,
-  },
-  totalDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#34D399',
   },
   totalPillText: {
     color: '#FFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  auditPill: {
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  auditPillText: {
-    color: '#065F46',
     fontSize: 12,
     fontWeight: '600',
   },
@@ -937,6 +1011,37 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#0F172A',
+  },
+  columnFiltersRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 24,
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  colToggleBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    backgroundColor: '#FFF',
+  },
+  colToggleBtnActive: {
+    borderColor: '#0D4722',
+    backgroundColor: '#0D4722',
+  },
+  colToggleText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  colToggleTextActive: {
+    color: '#FFF',
   },
   matrixHeader: {
     flexDirection: 'row',
