@@ -29,6 +29,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 15000,
 });
 
 // Intercept requests to attach the Firebase ID token
@@ -48,6 +49,19 @@ api.interceptors.request.use(
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+// Intercept responses for helpful debugging on network failure
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+      console.warn(
+        `[API Network Error] Unable to reach backend at: ${error.config?.baseURL || BACKEND_URL}${error.config?.url || ''}. Check if your backend server is running on port 5000.`
+      );
+    }
+    return Promise.reject(error);
+  }
 );
 
 export default api;
