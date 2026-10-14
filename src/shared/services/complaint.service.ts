@@ -6,6 +6,7 @@ import {
   ComplaintCategory,
   ComplaintPriority,
 } from '../types/complaint.types';
+import { CaseStatus } from '../types/case.types';
 
 // Sample seed complaints for instant testing/demo in Expo Go
 const INITIAL_MOCK_COMPLAINTS: Complaint[] = [
@@ -108,7 +109,9 @@ const INITIAL_MOCK_COMPLAINTS: Complaint[] = [
       },
     ],
     caseId: 'CASE-2026-084',
+    caseStatus: CaseStatus.UNDER_INVESTIGATION,
     assignedInvestigatorId: 'inv-101',
+    assignedInvestigatorName: 'Lead Investigator Sarah Connor',
     createdAt: '2026-08-10T09:00:00.000Z',
     updatedAt: '2026-08-13T10:00:00.000Z',
   },
@@ -165,22 +168,37 @@ export const ComplaintService = {
   },
 
   async getMyComplaints(): Promise<Complaint[]> {
+    let list: Complaint[] = [];
     try {
       const response = await api.get('/complaints/my');
       if (response.data && response.data.data) {
-        return response.data.data;
+        list = response.data.data;
       }
     } catch (err) {
       console.log('Loading local mock complaints:', err);
     }
-    return [...localComplaintsStore];
+    if (list.length === 0) {
+      list = [...localComplaintsStore];
+    }
+    return list.map((c) => ({
+      ...c,
+      statusTimeline: [...(c.statusTimeline || [])].sort(
+        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      ),
+    }));
   },
 
   async getComplaintById(idOrTracking: string): Promise<Complaint | null> {
     try {
       const response = await api.get(`/complaints/${idOrTracking}`);
       if (response.data && response.data.data) {
-        return response.data.data;
+        const item: Complaint = response.data.data;
+        if (item.statusTimeline) {
+          item.statusTimeline.sort(
+            (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+        }
+        return item;
       }
     } catch (err) {
       console.log('Searching in local store:', err);
@@ -189,7 +207,15 @@ export const ComplaintService = {
     const found = localComplaintsStore.find(
       (c) => c._id === idOrTracking || c.trackingNumber === idOrTracking
     );
-    return found || null;
+    if (!found) return null;
+
+    const copy = { ...found };
+    if (copy.statusTimeline) {
+      copy.statusTimeline = [...copy.statusTimeline].sort(
+        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+    }
+    return copy;
   },
 
   async getPendingComplaints(): Promise<Complaint[]> {
@@ -398,5 +424,45 @@ export const ComplaintService = {
     });
 
     return { byCategory, byStatus };
+  },
+
+  syncCaseStatus(
+    caseIdOrComplaintId: string,
+    status: CaseStatus,
+    note?: string,
+    updatedBy?: string
+  ): void {
+    const index = localComplaintsStore.findIndex(
+      (c) =>
+        c.caseId === caseIdOrComplaintId ||
+        c._id === caseIdOrComplaintId ||
+        c.trackingNumber === caseIdOrComplaintId
+    );
+    if (index !== -1) {
+      const current = localComplaintsStore[index];
+      const statusTitleMap: Record<string, string> = {
+        NEW: 'New Case Created',
+        PENDING: 'Investigator Assigned — Pending Start',
+        UNDER_INVESTIGATION: 'Investigation Commenced',
+        RESOLVED: 'Case Resolved',
+        CLOSED: 'Case Closed',
+      };
+      const newTimeline = [
+        ...current.statusTimeline,
+        {
+          status: ComplaintStatus.CONVERTED_TO_CASE,
+          title: statusTitleMap[status] || `Investigation Status: ${status}`,
+          note: note || `Case status updated to ${status.replace(/_/g, ' ')}`,
+          updatedBy: updatedBy || 'Investigator',
+          timestamp: new Date().toISOString(),
+        },
+      ];
+      localComplaintsStore[index] = {
+        ...current,
+        caseStatus: status,
+        statusTimeline: newTimeline,
+        updatedAt: new Date().toISOString(),
+      };
+    }
   },
 };

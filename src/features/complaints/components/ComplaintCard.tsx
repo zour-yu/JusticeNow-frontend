@@ -27,11 +27,19 @@ export const ComplaintCard: React.FC<ComplaintCardProps> = ({ complaint, onPress
       {/* Top row: Tracking ID & Status Badge */}
       <View style={styles.topRow}>
         <View style={styles.trackingContainer}>
-          <Text style={styles.trackingLabel}>CASE</Text>
+          <Text style={styles.trackingLabel}>{complaint.caseId ? 'FORMAL CASE' : 'COMPLAINT'}</Text>
           <Text style={styles.trackingNumber}>{complaint.trackingNumber}</Text>
         </View>
-        <StatusBadge status={complaint.status} size="sm" />
+        <StatusBadge status={complaint.caseStatus || complaint.status} size="sm" />
       </View>
+
+      {/* Case Ref Tag if converted */}
+      {complaint.caseId ? (
+        <View style={styles.caseRefTag}>
+          <Ionicons name="shield-checkmark" size={12} color="#0D4722" style={{ marginRight: 4 }} />
+          <Text style={styles.caseRefText}>Assigned Investigation #{complaint.caseId}</Text>
+        </View>
+      ) : null}
 
       {/* Category and Title */}
       <View style={styles.categoryRow}>
@@ -122,6 +130,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#111827',
     letterSpacing: 0.5,
+  },
+  caseRefTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F0FDF4',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  caseRefText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0D4722',
   },
   categoryRow: {
     flexDirection: 'row',

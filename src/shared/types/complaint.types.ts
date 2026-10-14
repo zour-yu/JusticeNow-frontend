@@ -1,3 +1,5 @@
+import type { CaseStatus } from './case.types';
+
 export enum ComplaintCategory {
   POLICE_MISCONDUCT = 'POLICE_MISCONDUCT',
   DISCRIMINATION = 'DISCRIMINATION',
@@ -66,7 +68,9 @@ export interface Complaint {
   priority: ComplaintPriority;
   statusTimeline: TimelineEvent[];
   assignedInvestigatorId?: string;
+  assignedInvestigatorName?: string;
   caseId?: string;
+  caseStatus?: CaseStatus;
   createdAt: string;
   updatedAt: string;
 }

@@ -84,7 +84,10 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
     }
   );
 
-  const getStageIndex = (status: ComplaintStatus) => {
+  const getStageIndex = (status: ComplaintStatus, caseStatus?: string) => {
+    if (caseStatus === 'RESOLVED' || caseStatus === 'CLOSED') {
+      return 5;
+    }
     switch (status) {
       case ComplaintStatus.SUBMITTED:
         return 1;
@@ -99,7 +102,7 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
     }
   };
 
-  const currentStage = getStageIndex(complaint.status);
+  const currentStage = getStageIndex(complaint.status, complaint.caseStatus);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -130,7 +133,7 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
               <Text style={styles.trackingTag}>CASE REFERENCE</Text>
               <Text style={styles.trackingIdText}>{complaint.trackingNumber}</Text>
             </View>
-            <StatusBadge status={complaint.status} />
+            <StatusBadge status={complaint.caseStatus || complaint.status} />
           </View>
 
           {/* Stepper Progress Bar */}
@@ -141,6 +144,7 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
                 { label: 'Review', stage: 2 },
                 { label: 'Approved', stage: 3 },
                 { label: 'Investigation', stage: 4 },
+                { label: 'Resolution', stage: 5 },
               ].map((step, index) => {
                 const isCompleted = currentStage >= step.stage;
                 const isCurrent = currentStage === step.stage;
@@ -177,6 +181,58 @@ export const ComplaintDetailScreen = ({ route, navigation }: any) => {
             </View>
           </View>
         </View>
+
+        {/* Active Investigation Card for Citizen */}
+        {(complaint.caseId || complaint.status === ComplaintStatus.CONVERTED_TO_CASE) && (
+          <View style={styles.investigationCard}>
+            <View style={styles.investigationHeader}>
+              <View style={styles.investigationBadge}>
+                <Ionicons name="shield-checkmark" size={14} color="#0D4722" />
+                <Text style={styles.investigationBadgeText}>FORMAL INVESTIGATION</Text>
+              </View>
+              <StatusBadge status={complaint.caseStatus || 'UNDER_INVESTIGATION'} size="sm" />
+            </View>
+
+            <View style={styles.investigationBody}>
+              <Text style={styles.investigationCaseNumber}>
+                Case #{complaint.caseId || complaint.trackingNumber}
+              </Text>
+              <Text style={styles.investigationDesc}>
+                {complaint.caseStatus === 'RESOLVED'
+                  ? 'This investigation has been resolved. Remediation steps and closing findings have been logged.'
+                  : complaint.caseStatus === 'CLOSED'
+                  ? 'This case has been formally closed by the investigation department.'
+                  : complaint.caseStatus === 'UNDER_INVESTIGATION'
+                  ? 'An investigator is actively gathering evidence, interviewing witnesses, and reviewing findings.'
+                  : 'An investigator has been assigned to lead this case.'}
+              </Text>
+
+              {complaint.assignedInvestigatorName ? (
+                <View style={styles.investigatorRow}>
+                  <Ionicons name="person-circle-outline" size={18} color="#0D4722" />
+                  <Text style={styles.investigatorLabel}>Assigned Investigator:</Text>
+                  <Text style={styles.investigatorValue}>{complaint.assignedInvestigatorName}</Text>
+                </View>
+              ) : null}
+
+              {complaint.caseId ? (
+                <TouchableOpacity
+                  style={styles.viewCaseBtn}
+                  onPress={() =>
+                    navigation.navigate('CaseDetail', {
+                      caseId: complaint.caseId,
+                      id: complaint.caseId,
+                    })
+                  }
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.viewCaseBtnText}>View Full Investigation & Audit History</Text>
+                  <Ionicons name="arrow-forward-circle" size={18} color="#FFFFFF" />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </View>
+        )}
 
         {/* Section 1: Overview & Category */}
         <View style={styles.card}>
@@ -556,6 +612,90 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  investigationCard: {
+    borderRadius: 16,
+    padding: 18,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: '#A7F3D0',
+    backgroundColor: '#F0FDF4',
+    shadowColor: '#0D4722',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  investigationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  investigationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  investigationBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#0D4722',
+    letterSpacing: 0.5,
+  },
+  investigationBody: {
+    gap: 8,
+  },
+  investigationCaseNumber: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  investigationDesc: {
+    fontSize: 13,
+    color: '#374151',
+    lineHeight: 18,
+  },
+  investigatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    gap: 6,
+    marginTop: 4,
+  },
+  investigatorLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4B5563',
+  },
+  investigatorValue: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0D4722',
+  },
+  viewCaseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0D4722',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    gap: 8,
+    marginTop: 6,
+  },
+  viewCaseBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });
 

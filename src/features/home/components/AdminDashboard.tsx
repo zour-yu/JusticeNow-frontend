@@ -14,7 +14,7 @@ import { Case, CaseStatus, Investigator } from '../../../shared/types/case.types
 import { Complaint, ComplaintStatus } from '../../../shared/types/complaint.types';
 import { CaseService } from '../../../shared/services/case.service';
 import { ComplaintService } from '../../../shared/services/complaint.service';
-import { UserService, InvestigatorApplicant } from '../../../shared/services/user.service';
+import { UserService, InvestigatorApplicant, ManagedUser } from '../../../shared/services/user.service';
 
 const { width } = Dimensions.get('window');
 
@@ -28,21 +28,24 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [investigators, setInvestigators] = useState<Investigator[]>([]);
   const [pendingApplicants, setPendingApplicants] = useState<InvestigatorApplicant[]>([]);
+  const [usersCount, setUsersCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
-      const [casesData, complaintsData, investigatorsData, pendingData] = await Promise.all([
+      const [casesData, complaintsData, investigatorsData, pendingData, usersData] = await Promise.all([
         CaseService.getAllCases(),
         ComplaintService.getAllComplaints(),
         CaseService.getAvailableInvestigators(),
         UserService.getPendingInvestigators(),
+        UserService.getAllUsers(),
       ]);
       setCases(casesData);
       setComplaints(complaintsData);
       setInvestigators(investigatorsData);
       setPendingApplicants(pendingData);
+      setUsersCount(usersData.length);
     } catch (err) {
       console.log('Error loading admin dashboard data:', err);
     } finally {
@@ -50,6 +53,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
       setIsRefreshing(false);
     }
   }, []);
+
 
   useEffect(() => {
     loadData();
@@ -155,10 +159,14 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
               <Text style={styles.tickerLabel}>Unassigned</Text>
             </View>
             <View style={styles.tickerDivider} />
-            <View style={styles.tickerCol}>
+            <TouchableOpacity
+              style={styles.tickerCol}
+              onPress={() => navigation.navigate('AdminCaseList')}
+              activeOpacity={0.7}
+            >
               <Text style={styles.tickerNumber}>{cases.length}</Text>
               <Text style={styles.tickerLabel}>Total Cases</Text>
-            </View>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -278,7 +286,58 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
           </TouchableOpacity>
+
+          {/* 5. Manage User Accounts */}
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('AdminUserManagement')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.actionIconWrapper, { backgroundColor: '#F3E8FF' }]}>
+              <Ionicons name="people-circle" size={26} color="#7C3AED" />
+            </View>
+            <View style={styles.actionCardTexts}>
+              <View style={styles.actionTitleRow}>
+                <Text style={styles.actionCardTitle}>Manage User Accounts</Text>
+                <View style={[styles.actionBadgeWarning, { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }]}>
+                  <Text style={[styles.actionBadgeWarningText, { color: '#6D28D9' }]}>
+                    {usersCount > 0 ? `${usersCount} ACCOUNTS` : 'SECURITY & ACCESS'}
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.actionCardDesc}>
+                View user profiles, update roles & credentials, and deactivate or reactivate accounts
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+          </TouchableOpacity>
+
+          {/* 6. Monitor All Cases */}
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('AdminCaseList')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.actionIconWrapper, { backgroundColor: '#ECFDF5' }]}>
+              <Ionicons name="folder-open" size={26} color="#0D4722" />
+            </View>
+            <View style={styles.actionCardTexts}>
+              <View style={styles.actionTitleRow}>
+                <Text style={styles.actionCardTitle}>Monitor All Cases</Text>
+                <View style={[styles.actionBadgeWarning, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
+                  <Text style={[styles.actionBadgeWarningText, { color: '#047857' }]}>
+                    {cases.length} TOTAL CASES
+                  </Text>
+                </View>
+              </View>
+              <Text style={styles.actionCardDesc}>
+                View all cases across all jurisdictions, track status & category, and inspect investigation details
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+          </TouchableOpacity>
         </View>
+
 
         {/* ── INVESTIGATOR TEAM ROSTER & WORKLOAD ── */}
         <View style={styles.sectionWrapper}>

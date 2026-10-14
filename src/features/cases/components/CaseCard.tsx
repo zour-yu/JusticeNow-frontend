@@ -94,6 +94,25 @@ export const CaseCard: React.FC<Props> = ({ caseItem, onPress }) => {
         <Text style={styles.assignedDateText}>Assigned: {formattedAssignedDate}</Text>
       </View>
 
+      {/* Investigator Assignment Row */}
+      <View style={styles.investigatorRow}>
+        <Ionicons
+          name={caseItem.assignedInvestigatorName ? 'shield-checkmark' : 'alert-circle'}
+          size={13}
+          color={caseItem.assignedInvestigatorName ? '#059669' : '#DC2626'}
+        />
+        <Text
+          style={[
+            styles.investigatorText,
+            !caseItem.assignedInvestigatorName && { color: '#DC2626', fontWeight: '700' },
+          ]}
+        >
+          {caseItem.assignedInvestigatorName
+            ? `Lead: ${caseItem.assignedInvestigatorName}`
+            : 'Unassigned (Requires Attention)'}
+        </Text>
+      </View>
+
       {/* Footer: Evidence & Notes Stats */}
       <View style={styles.footerRow}>
         <View style={styles.statsContainer}>
@@ -111,13 +130,14 @@ export const CaseCard: React.FC<Props> = ({ caseItem, onPress }) => {
           </View>
         </View>
         <View style={styles.actionBtn}>
-          <Text style={styles.actionBtnText}>Investigate</Text>
+          <Text style={styles.actionBtnText}>View Details</Text>
           <Ionicons name="arrow-forward" size={14} color="#0D4722" />
         </View>
       </View>
     </TouchableOpacity>
   );
 };
+
 
 const styles = StyleSheet.create({
   card: {
@@ -245,4 +265,22 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0D4722',
   },
+  investigatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    marginBottom: 10,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  investigatorText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#059669',
+  },
 });
+

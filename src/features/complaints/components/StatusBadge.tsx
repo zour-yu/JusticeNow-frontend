@@ -3,7 +3,7 @@ import { View, Text } from 'react-native';
 import { ComplaintStatus } from '../../../shared/types/complaint.types';
 
 interface StatusBadgeProps {
-  status: ComplaintStatus;
+  status: ComplaintStatus | string;
   size?: 'sm' | 'md';
 }
 
@@ -32,11 +32,40 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
           borderColor: '#BBF7D0',
         };
       case ComplaintStatus.CONVERTED_TO_CASE:
+      case 'UNDER_INVESTIGATION':
         return {
           label: 'Under Investigation',
           bgColor: '#D1FAE5',
           textColor: '#065F46',
           borderColor: '#A7F3D0',
+        };
+      case 'PENDING':
+        return {
+          label: 'Pending Start',
+          bgColor: '#FEF3C7',
+          textColor: '#92400E',
+          borderColor: '#FDE68A',
+        };
+      case 'RESOLVED':
+        return {
+          label: 'Resolved',
+          bgColor: '#ECFDF5',
+          textColor: '#047857',
+          borderColor: '#6EE7B7',
+        };
+      case 'CLOSED':
+        return {
+          label: 'Closed',
+          bgColor: '#F3F4F6',
+          textColor: '#4B5563',
+          borderColor: '#D1D5DB',
+        };
+      case 'NEW':
+        return {
+          label: 'New Case',
+          bgColor: '#EFF6FF',
+          textColor: '#1D4ED8',
+          borderColor: '#BFDBFE',
         };
       case ComplaintStatus.REJECTED:
         return {

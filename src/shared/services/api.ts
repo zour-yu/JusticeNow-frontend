@@ -25,7 +25,6 @@ console.log('🔗 Connecting to Backend at:', BACKEND_URL);
 
 const api = axios.create({
   baseURL: BACKEND_URL,
-  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },
