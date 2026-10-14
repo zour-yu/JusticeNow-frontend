@@ -18,17 +18,17 @@ export const TimelineView: React.FC<TimelineViewProps> = ({ timeline }) => {
   const getStatusColor = (status: ComplaintStatus) => {
     switch (status) {
       case ComplaintStatus.SUBMITTED:
-        return '#F59E0B'; // Amber
+        return '#6B7280'; // Grey
       case ComplaintStatus.UNDER_REVIEW:
-        return '#6366F1'; // Indigo
+        return '#F59E0B'; // Amber
       case ComplaintStatus.APPROVED:
         return '#10B981'; // Emerald
       case ComplaintStatus.CONVERTED_TO_CASE:
-        return '#3B82F6'; // Blue
+        return '#0D4722'; // Forest Green
       case ComplaintStatus.REJECTED:
         return '#EF4444'; // Red
       default:
-        return '#64748B';
+        return '#6B7280';
     }
   };
 
@@ -85,7 +85,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: '#64748B',
+    color: '#6B7280',
   },
   timelineItem: {
     flexDirection: 'row',
@@ -105,25 +105,25 @@ const styles = StyleSheet.create({
   line: {
     width: 2,
     flex: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#E5E7EB',
     marginTop: 4,
   },
   contentCard: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FAFAFA',
     padding: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
   },
   latestCard: {
     backgroundColor: '#FFFFFF',
-    borderColor: '#CBD5E1',
+    borderColor: '#D1FAE5',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
   },
   headerRow: {
     flexDirection: 'row',
@@ -134,27 +134,27 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   title: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#111827',
   },
   date: {
     fontSize: 11,
-    color: '#94A3B8',
+    color: '#9CA3AF',
     fontWeight: '500',
   },
   note: {
     fontSize: 13,
-    color: '#334155',
+    color: '#374151',
     lineHeight: 18,
     marginBottom: 6,
   },
   author: {
     fontSize: 11,
-    color: '#64748B',
+    color: '#6B7280',
   },
   authorBold: {
     fontWeight: '600',
-    color: '#475569',
+    color: '#111827',
   },
 });

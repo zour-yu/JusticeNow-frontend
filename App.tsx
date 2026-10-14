@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import LoginScreen from './src/features/auth/screens/LoginScreen';
 import RegisterScreen from './src/features/auth/screens/RegisterScreen';
 import ForgotPasswordScreen from './src/features/auth/screens/ForgotPasswordScreen';
@@ -25,28 +26,29 @@ const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />
-        <Stack.Screen name="Home" component={HomeScreen} />
-        <Stack.Screen name="SubmitComplaint" component={SubmitComplaintScreen} />
-        <Stack.Screen name="MyComplaints" component={MyComplaintsScreen} />
-        <Stack.Screen name="ComplaintDetail" component={ComplaintDetailScreen} />
-        <Stack.Screen name="AssignedCases" component={AssignedCasesScreen} />
-        <Stack.Screen name="CaseDetail" component={CaseDetailScreen} />
-        <Stack.Screen name="Profile" component={ProfileScreen} />
-        <Stack.Screen name="PersonalInformation" component={PersonalInformationScreen} />
-        <Stack.Screen name="AdminComplaintsList" component={AdminComplaintsListScreen} />
-        <Stack.Screen name="AdminComplaintReview" component={AdminComplaintReviewScreen} />
-        <Stack.Screen name="AdminCategorizationList" component={AdminCategorizationListScreen} />
-        <Stack.Screen name="AdminCategorizationDetail" component={AdminCategorizationDetailScreen} />
-        <Stack.Screen name="AdminAssignInvestigator" component={AdminAssignInvestigatorScreen} />
-        <Stack.Screen name="AdminInvestigatorApproval" component={AdminInvestigatorApprovalScreen} />
-        <Stack.Screen name="Security" component={SecurityScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Login" component={LoginScreen} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          <Stack.Screen name="Register" component={RegisterScreen} />
+          <Stack.Screen name="PendingApproval" component={PendingApprovalScreen} />
+          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="SubmitComplaint" component={SubmitComplaintScreen} />
+          <Stack.Screen name="MyComplaints" component={MyComplaintsScreen} />
+          <Stack.Screen name="ComplaintDetail" component={ComplaintDetailScreen} />
+          <Stack.Screen name="AssignedCases" component={AssignedCasesScreen} />
+          <Stack.Screen name="CaseDetail" component={CaseDetailScreen} />
+          <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="PersonalInformation" component={PersonalInformationScreen} />
+          <Stack.Screen name="AdminComplaintsList" component={AdminComplaintsListScreen} />
+          <Stack.Screen name="AdminComplaintReview" component={AdminComplaintReviewScreen} />
+          <Stack.Screen name="AdminCategorizationList" component={AdminCategorizationListScreen} />
+          <Stack.Screen name="AdminCategorizationDetail" component={AdminCategorizationDetailScreen} />
+          <Stack.Screen name="AdminAssignInvestigator" component={AdminAssignInvestigatorScreen} />
+          <Stack.Screen name="Security" component={SecurityScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }

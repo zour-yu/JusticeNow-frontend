@@ -3,53 +3,29 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { auth } from '../config/firebase';
 
-const getBackendUrl = (): string => {
-  // 1. Web environment
-  if (Platform.OS === 'web') {
-    if (typeof window !== 'undefined' && window.location?.hostname) {
-      return `http://${window.location.hostname}:5000`;
-    }
-    return process.env.EXPO_PUBLIC_BACKEND_URL || 'http://localhost:5000';
-  }
-
-  // 2. Production or explicit HTTPS/Tunnel backend URL (e.g., ngrok, Cloudflare, deployed cloud server)
-  const envUrl = process.env.EXPO_PUBLIC_BACKEND_URL;
-  if (envUrl && envUrl.startsWith('https://')) {
-    return envUrl;
-  }
-
-  // 3. Dynamically extract host IP from Expo's Metro bundler connection (Expo Go / Dev Client)
-  // This ensures that switching Wi-Fi / Mobile Hotspot automatically adapts without manual config!
-  const hostUri =
-    Constants.expoConfig?.hostUri ||
-    (Constants as any).manifest?.debuggerHost ||
-    (Constants as any).manifest2?.extra?.expoGo?.debuggerHost;
-
+// Automatically detect host IP from Metro / Expo Go
+const getBackendUrl = () => {
+  // Extract host IP from Expo Constants if available (e.g. "192.168.1.7:8081" -> "192.168.1.7")
+  const hostUri = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.debuggerHost;
   if (hostUri) {
     const ip = hostUri.split(':')[0];
-    if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-      return `http://${ip}:5000`;
-    }
+    return `http://${ip}:5000`;
   }
 
-  // 4. Android emulator fallback if hostUri is not available
+  // Fallback for Android emulator / physical device on current network
   if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:5000';
+    return 'http://192.168.1.7:5000';
   }
 
-  // 5. Explicit local IP from .env or fallback
-  if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
-    return envUrl;
-  }
-
-  return 'http://172.20.10.3:5000';
+  return 'http://localhost:5000';
 };
 
 const BACKEND_URL = getBackendUrl();
-console.log(`[API Service] Base backend URL configured as: ${BACKEND_URL}`);
+console.log('🔗 Connecting to Backend at:', BACKEND_URL);
 
 const api = axios.create({
   baseURL: BACKEND_URL,
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
   },

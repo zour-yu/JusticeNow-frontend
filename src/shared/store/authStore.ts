@@ -56,9 +56,15 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user, isLoading: false });
       return user;
     } catch (error: any) {
-      console.error('Login Error:', error.response?.data || error.message);
+      console.error('Login Error:', error.response?.data || error.message || error);
+      const msg =
+        error.response?.data?.message ||
+        (error.code
+          ? error.code.replace('auth/', '').replace(/-/g, ' ')
+          : error.message) ||
+        'Failed to login';
       set({ 
-        error: error.response?.data?.message || error.message || 'Failed to login', 
+        error: msg.charAt(0).toUpperCase() + msg.slice(1), 
         isLoading: false 
       });
       throw error;
@@ -83,9 +89,15 @@ export const useAuthStore = create<AuthState>((set) => ({
       set({ user, isLoading: false });
       return user;
     } catch (error: any) {
-      console.error('Registration Error:', error.response?.data || error.message);
+      console.error('Registration Error:', error.response?.data || error.message || error);
+      const msg =
+        error.response?.data?.message ||
+        (error.code
+          ? error.code.replace('auth/', '').replace(/-/g, ' ')
+          : error.message) ||
+        'Failed to register';
       set({ 
-        error: error.response?.data?.message || error.message || 'Failed to register', 
+        error: msg.charAt(0).toUpperCase() + msg.slice(1), 
         isLoading: false 
       });
       throw error;
