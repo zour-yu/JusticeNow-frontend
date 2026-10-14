@@ -52,6 +52,7 @@ export const CaseDetailScreen = ({ route, navigation }: any) => {
 
   const userIdentifier = user?.firebaseUid || user?._id || '';
   const isAdmin = user?.role === 'ADMIN';
+  const isCitizen = user?.role === 'CITIZEN';
   
   // Authorization check: User can modify if Admin OR if investigator matches assignedInvestigatorId (or default demo inv-101)
   const isAssignedToMe: boolean = Boolean(
@@ -64,7 +65,7 @@ export const CaseDetailScreen = ({ route, navigation }: any) => {
   const fetchCaseDetail = useCallback(async () => {
     if (!caseId) return;
     try {
-      const data = await CaseService.getCaseById(caseId);
+      const data = await CaseService.getCaseById(caseId, isCitizen);
       if (data) {
         setCaseData(data);
         setSelectedNewStatus(data.status);
@@ -233,11 +234,19 @@ export const CaseDetailScreen = ({ route, navigation }: any) => {
           {/* Authorization Notice Banner if NOT assigned */}
           {!isAssignedToMe && (
             <View style={styles.readOnlyBanner}>
-              <Ionicons name="shield-outline" size={20} color="#92400E" />
+              <Ionicons
+                name={user?.role === 'CITIZEN' ? 'shield-checkmark-outline' : 'shield-outline'}
+                size={20}
+                color="#92400E"
+              />
               <View style={styles.readOnlyBannerTexts}>
-                <Text style={styles.readOnlyBannerTitle}>Read-Only Access</Text>
+                <Text style={styles.readOnlyBannerTitle}>
+                  {user?.role === 'CITIZEN' ? 'Complainant Case Tracking' : 'Read-Only Access'}
+                </Text>
                 <Text style={styles.readOnlyBannerDesc}>
-                  This case is assigned to {caseData.assignedInvestigatorName}. You can review case details, but modification actions are restricted to the assigned investigator.
+                  {user?.role === 'CITIZEN'
+                    ? `This formal case is assigned to ${caseData.assignedInvestigatorName}. You can monitor the real-time status, findings, and timeline updates below.`
+                    : `This case is assigned to ${caseData.assignedInvestigatorName}. You can review case details, but modification actions are restricted to the assigned investigator.`}
                 </Text>
               </View>
             </View>
@@ -391,12 +400,14 @@ export const CaseDetailScreen = ({ route, navigation }: any) => {
             onAddEvidence={handleAddEvidence}
           />
 
-          {/* Investigation Notes Section */}
-          <InvestigationNotesSection
-            notes={caseData.investigationNotes || []}
-            isAuthorized={isAssignedToMe}
-            onAddNote={handleAddNote}
-          />
+          {/* Investigation Notes Section - only visible to authorized investigators and admins */}
+          {!isCitizen && (
+            <InvestigationNotesSection
+              notes={caseData.investigationNotes || []}
+              isAuthorized={isAssignedToMe}
+              onAddNote={handleAddNote}
+            />
+          )}
 
           {/* Status History & Action Timeline */}
           <View style={styles.timelineCard}>
@@ -407,29 +418,37 @@ export const CaseDetailScreen = ({ route, navigation }: any) => {
 
             {caseData.statusTimeline && caseData.statusTimeline.length > 0 ? (
               <View style={styles.timelineList}>
-                {caseData.statusTimeline.map((item, idx) => (
-                  <View key={idx} style={styles.timelineItem}>
-                    <View style={styles.timelineLeftCol}>
-                      <View style={styles.timelineDot} />
-                      {idx < caseData.statusTimeline.length - 1 && (
-                        <View style={styles.timelineConnector} />
-                      )}
-                    </View>
-                    <View style={styles.timelineContent}>
-                      <View style={styles.timelineHeaderRow}>
-                        <Text style={styles.timelineTitle}>{item.title}</Text>
-                        <Text style={styles.timelineTimestamp}>
-                          {new Date(item.timestamp).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </Text>
+                {[...(caseData.statusTimeline || [])]
+                  .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+                  .map((item, idx, arr) => {
+                    const isLatest = idx === arr.length - 1;
+                    const formattedDateTime = new Date(item.timestamp).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    });
+
+                    return (
+                      <View key={idx} style={styles.timelineItem}>
+                        <View style={styles.timelineLeftCol}>
+                          <View style={[styles.timelineDot, isLatest && styles.timelineDotLatest]} />
+                          {idx < arr.length - 1 && (
+                            <View style={styles.timelineConnector} />
+                          )}
+                        </View>
+                        <View style={[styles.timelineContent, isLatest && styles.timelineContentLatest]}>
+                          <View style={styles.timelineHeaderRow}>
+                            <Text style={styles.timelineTitle}>{item.title}</Text>
+                            <Text style={styles.timelineTimestamp}>{formattedDateTime}</Text>
+                          </View>
+                          <Text style={styles.timelineNote}>{item.note}</Text>
+                          <Text style={styles.timelineUpdatedBy}>Authorized By: {item.updatedBy}</Text>
+                        </View>
                       </View>
-                      <Text style={styles.timelineNote}>{item.note}</Text>
-                      <Text style={styles.timelineUpdatedBy}>By: {item.updatedBy}</Text>
-                    </View>
-                  </View>
-                ))}
+                    );
+                  })}
               </View>
             ) : (
               <Text style={styles.emptyTimelineText}>No timeline events logged.</Text>
@@ -901,6 +920,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#0D4722',
     marginTop: 4,
   },
+  timelineDotLatest: {
+    backgroundColor: '#059669',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#A7F3D0',
+  },
   timelineConnector: {
     width: 2,
     flex: 1,
@@ -911,6 +938,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingBottom: 14,
     paddingLeft: 6,
+  },
+  timelineContentLatest: {
+    backgroundColor: '#F0FDF4',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#D1FAE5',
+    marginBottom: 8,
   },
   timelineHeaderRow: {
     flexDirection: 'row',

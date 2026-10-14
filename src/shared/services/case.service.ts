@@ -10,6 +10,7 @@ import {
   AssignInvestigatorInput,
 } from '../types/case.types';
 import { ComplaintCategory } from '../types/complaint.types';
+import { ComplaintService } from './complaint.service';
 
 export const INITIAL_MOCK_INVESTIGATORS: Investigator[] = [
   {
@@ -499,23 +500,69 @@ const INITIAL_MOCK_CASES: Case[] = [
 let localCasesStore: Case[] = [...INITIAL_MOCK_CASES];
 
 export const CaseService = {
-  async getAllCases(status?: CaseStatus): Promise<Case[]> {
+  async getAllCases(
+    filtersOrStatus?:
+      | CaseStatus
+      | { status?: CaseStatus; category?: string; search?: string }
+  ): Promise<Case[]> {
+    let status: CaseStatus | undefined;
+    let category: string | undefined;
+    let search: string | undefined;
+
+    if (typeof filtersOrStatus === 'string') {
+      status = filtersOrStatus as CaseStatus;
+    } else if (filtersOrStatus) {
+      status = filtersOrStatus.status;
+      category = filtersOrStatus.category;
+      search = filtersOrStatus.search;
+    }
+
     try {
-      const url = status ? `/cases/all?status=${status}` : '/cases/all';
-      const response = await api.get(url);
+      const params: any = {};
+      if (status && (status as any) !== 'ALL') params.status = status;
+      if (category && category !== 'ALL') params.category = category;
+
+      const response = await api.get('/cases/all', { params });
       if (response.data && response.data.data) {
-        return response.data.data;
+        let list: Case[] = response.data.data;
+        if (search && search.trim()) {
+          const q = search.toLowerCase().trim();
+          list = list.filter(
+            (c: Case) =>
+              c.title?.toLowerCase().includes(q) ||
+              c.caseNumber?.toLowerCase().includes(q) ||
+              c.assignedInvestigatorName?.toLowerCase().includes(q) ||
+              c.complaintDetails?.citizenName?.toLowerCase().includes(q) ||
+              c.category?.toLowerCase().includes(q)
+          );
+        }
+        return list;
       }
     } catch (err) {
       console.log('Loading all cases from backend failed, using mock store:', err);
     }
 
     let filtered = [...localCasesStore];
-    if (status) {
+    if (status && (status as any) !== 'ALL') {
       filtered = filtered.filter((c) => c.status === status);
+    }
+    if (category && category !== 'ALL') {
+      filtered = filtered.filter((c) => c.category === category);
+    }
+    if (search && search.trim()) {
+      const q = search.toLowerCase().trim();
+      filtered = filtered.filter(
+        (c: Case) =>
+          c.title?.toLowerCase().includes(q) ||
+          c.caseNumber?.toLowerCase().includes(q) ||
+          c.assignedInvestigatorName?.toLowerCase().includes(q) ||
+          c.complaintDetails?.citizenName?.toLowerCase().includes(q) ||
+          c.category?.toLowerCase().includes(q)
+      );
     }
     return filtered;
   },
+
 
   async getCategoryMetrics(): Promise<any[]> {
     try {
@@ -547,11 +594,20 @@ export const CaseService = {
     return filtered;
   },
 
-  async getCaseById(idOrCaseNumber: string): Promise<Case | null> {
+  async getCaseById(idOrCaseNumber: string, isCitizen?: boolean): Promise<Case | null> {
     try {
       const response = await api.get(`/cases/${idOrCaseNumber}`);
       if (response.data && response.data.data) {
-        return response.data.data;
+        const caseItem: Case = response.data.data;
+        if (caseItem.statusTimeline) {
+          caseItem.statusTimeline.sort(
+            (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+        }
+        if (isCitizen) {
+          caseItem.investigationNotes = [];
+        }
+        return caseItem;
       }
     } catch (err) {
       console.log('Searching local store for case:', err);
@@ -560,7 +616,18 @@ export const CaseService = {
     const found = localCasesStore.find(
       (c) => c._id === idOrCaseNumber || c.caseNumber === idOrCaseNumber
     );
-    return found ? { ...found } : null;
+    if (!found) return null;
+
+    const caseCopy: Case = { ...found };
+    if (caseCopy.statusTimeline) {
+      caseCopy.statusTimeline = [...caseCopy.statusTimeline].sort(
+        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+    }
+    if (isCitizen) {
+      caseCopy.investigationNotes = [];
+    }
+    return caseCopy;
   },
 
   async updateCaseStatus(
@@ -576,6 +643,12 @@ export const CaseService = {
         const updated = response.data.data;
         localCasesStore = localCasesStore.map((c) =>
           c._id === updated._id || c.caseNumber === updated.caseNumber ? updated : c
+        );
+        ComplaintService.syncCaseStatus(
+          updated.caseNumber || updated.complaintId,
+          updated.status,
+          input.note,
+          'Investigator'
         );
         return updated;
       }
@@ -627,6 +700,12 @@ export const CaseService = {
     };
 
     localCasesStore[index] = updatedCase;
+    ComplaintService.syncCaseStatus(
+      updatedCase.caseNumber || updatedCase.complaintId,
+      updatedCase.status,
+      input.note,
+      'Investigator'
+    );
     return updatedCase;
   },
 

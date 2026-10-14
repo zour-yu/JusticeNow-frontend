@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotificationStore } from '../../../shared/store/notificationStore';
+import { useAuthStore } from '../../../shared/store/authStore';
+import { auth } from '../../../shared/config/firebase';
 
 interface NotificationBellProps {
   onPress?: () => void;
@@ -14,19 +16,24 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
   color = '#0D4722',
   size = 26
 }) => {
-  const { unreadCount, fetchUnreadCount, fetchNotifications } = useNotificationStore();
+  const { unreadCount, fetchUnreadCount } = useNotificationStore();
+  const { user } = useAuthStore();
 
   useEffect(() => {
-    // Initial fetch
+    // Only attempt fetch if user is logged in
+    if (!user && !auth?.currentUser) return;
+
     fetchUnreadCount();
     
-    // Poll for notifications every 10 seconds
+    // Poll for notifications every 15 seconds while logged in
     const interval = setInterval(() => {
-      fetchUnreadCount();
-    }, 10000);
+      if (auth?.currentUser) {
+        fetchUnreadCount();
+      }
+    }, 15000);
     
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   const Component = onPress ? TouchableOpacity : View;
 
