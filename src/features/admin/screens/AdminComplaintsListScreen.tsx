@@ -9,7 +9,9 @@ import {
   ActivityIndicator,
   StyleSheet,
   Alert,
+  StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Complaint, ComplaintStatus } from '../../../shared/types/complaint.types';
 import { ComplaintService } from '../../../shared/services/complaint.service';
@@ -113,7 +115,8 @@ export const AdminComplaintsListScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -268,7 +271,7 @@ export const AdminComplaintsListScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -283,7 +286,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    paddingTop: 20,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',

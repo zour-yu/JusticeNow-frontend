@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -7,7 +7,9 @@ import {
   ScrollView,
   ImageBackground,
   Image,
-  Dimensions
+  Dimensions,
+  RefreshControl,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../shared/store/authStore';
@@ -15,6 +17,9 @@ import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { InvestigatorDashboard } from '../components/InvestigatorDashboard';
 import { AdminDashboard } from '../components/AdminDashboard';
 import { NotificationBell } from '../../notifications/components/NotificationBell';
+import { Complaint, ComplaintStatus } from '../../../shared/types/complaint.types';
+import { ComplaintService } from '../../../shared/services/complaint.service';
+import { StatusBadge } from '../../complaints/components/StatusBadge';
 
 interface Props {
   navigation: any;
@@ -22,16 +27,92 @@ interface Props {
 
 const { width } = Dimensions.get('window');
 
+function formatTimeAgo(timestamp: string): string {
+  if (!timestamp) return 'Recently';
+  const now = new Date().getTime();
+  const past = new Date(timestamp).getTime();
+  const diffSec = Math.floor((now - past) / 1000);
+
+  if (diffSec < 60) return 'Just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHour = Math.floor(diffMin / 60);
+  if (diffHour < 24) return `${diffHour}h ago`;
+  const diffDays = Math.floor(diffHour / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return new Date(timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function getStepStatus(stepIndex: number, complaintStatus: string) {
+  // 0: Submitted, 1: Under Review, 2: Under Investigation, 3: Resolved, 4: Closed
+  let currentStepIndex = 0;
+  if (complaintStatus === ComplaintStatus.UNDER_REVIEW) {
+    currentStepIndex = 1;
+  } else if (
+    complaintStatus === ComplaintStatus.APPROVED ||
+    complaintStatus === ComplaintStatus.CONVERTED_TO_CASE ||
+    complaintStatus === 'UNDER_INVESTIGATION' ||
+    complaintStatus === 'PENDING'
+  ) {
+    currentStepIndex = 2;
+  } else if (complaintStatus === 'RESOLVED') {
+    currentStepIndex = 3;
+  } else if (complaintStatus === 'CLOSED') {
+    currentStepIndex = 4;
+  }
+
+  if (stepIndex < currentStepIndex) return 'COMPLETED';
+  if (stepIndex === currentStepIndex) return 'CURRENT';
+  return 'PENDING';
+}
+
+const TIMELINE_STEPS = [
+  { label: 'Submitted', key: 'SUBMITTED' },
+  { label: 'Under Review', key: 'UNDER_REVIEW' },
+  { label: 'Under\nInvestigation', key: 'UNDER_INVESTIGATION' },
+  { label: 'Resolved', key: 'RESOLVED' },
+  { label: 'Closed', key: 'CLOSED' },
+];
+
 export default function HomeScreen({ navigation }: Props) {
   const { user, logout } = useAuthStore();
+  const [complaints, setComplaints] = useState<Complaint[]>([]);
+  const [isLoadingComplaints, setIsLoadingComplaints] = useState<boolean>(true);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
+  const isAdmin = user?.role === 'ADMIN';
+  const isInvestigator = user?.role === 'INVESTIGATOR';
+
+  const loadCitizenComplaints = useCallback(async () => {
+    if (isAdmin || isInvestigator) return;
+    try {
+      const data = await ComplaintService.getMyComplaints();
+      setComplaints(data || []);
+    } catch (err) {
+      console.log('Error loading citizen complaints for home screen:', err);
+    } finally {
+      setIsLoadingComplaints(false);
+      setIsRefreshing(false);
+    }
+  }, [isAdmin, isInvestigator]);
+
+  useEffect(() => {
+    loadCitizenComplaints();
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadCitizenComplaints();
+    });
+    return unsubscribe;
+  }, [navigation, loadCitizenComplaints]);
+
+  const onRefresh = () => {
+    setIsRefreshing(true);
+    loadCitizenComplaints();
+  };
 
   const handleLogout = async () => {
     await logout();
     navigation.replace('Login');
   };
-
-  const isAdmin = user?.role === 'ADMIN';
-  const isInvestigator = user?.role === 'INVESTIGATOR';
 
   if (isAdmin) {
     return (
@@ -118,6 +199,14 @@ export default function HomeScreen({ navigation }: Props) {
         style={styles.scrollView} 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing}
+            onRefresh={onRefresh}
+            colors={['#0D4722']}
+            tintColor="#0D4722"
+          />
+        }
       >
         {/* HERO SECTION */}
         <View style={styles.heroContainer}>
@@ -193,64 +282,106 @@ export default function HomeScreen({ navigation }: Props) {
         </View>
         )}
 
-        {/* TRACK YOUR CASE or CITIZEN RECENT UPDATES */}
+        {/* TRACK YOUR CASE */}
         {!isAdmin && !isInvestigator && (
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Track Your Case</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('MyComplaints')}>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
+            {complaints.length > 0 && (
+              <TouchableOpacity onPress={() => navigation.navigate('MyComplaints')}>
+                <Text style={styles.viewAllText}>View All ({complaints.length})</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
-          <View style={styles.caseCard}>
-            <View style={styles.caseCardHeader}>
-              <Text style={styles.caseId}>Case #JN-2024-0156</Text>
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusBadgeText}>Under Investigation</Text>
-              </View>
+          {isLoadingComplaints ? (
+            <View style={styles.loadingBox}>
+              <ActivityIndicator size="small" color="#0D4722" />
+              <Text style={styles.loadingBoxText}>Loading your complaint progress...</Text>
             </View>
-            <Text style={styles.caseDesc}>Filed on 12 May 2024  •  Police misconduct and abuse of power</Text>
+          ) : complaints.length > 0 ? (
+            (() => {
+              const primaryComplaint = complaints[0];
+              const formattedDate = primaryComplaint.createdAt
+                ? new Date(primaryComplaint.createdAt).toLocaleDateString('en-US', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                  })
+                : 'Recently';
 
-            {/* TIMELINE */}
-            <View style={styles.timelineContainer}>
-              {/* Line */}
-              <View style={styles.timelineLine} />
+              return (
+                <TouchableOpacity
+                  style={styles.caseCard}
+                  onPress={() =>
+                    navigation.navigate('ComplaintDetail', {
+                      complaintId: primaryComplaint._id || primaryComplaint.trackingNumber,
+                      complaint: primaryComplaint,
+                    })
+                  }
+                  activeOpacity={0.88}
+                >
+                  <View style={styles.caseCardHeader}>
+                    <Text style={styles.caseId}>Complaint #{primaryComplaint.trackingNumber}</Text>
+                    <StatusBadge status={primaryComplaint.status} size="sm" />
+                  </View>
+                  <Text style={styles.caseDesc} numberOfLines={2}>
+                    Filed on {formattedDate}  •  {primaryComplaint.title}
+                  </Text>
 
-              <View style={styles.timelineStep}>
-                <View style={styles.timelineCircleCompleted}>
-                  <Ionicons name="checkmark" size={12} color="#FFF" />
-                </View>
-                <Text style={styles.timelineLabel}>Submitted</Text>
+                  {/* DYNAMIC TIMELINE */}
+                  <View style={styles.timelineContainer}>
+                    <View style={styles.timelineLine} />
+
+                    {TIMELINE_STEPS.map((st, idx) => {
+                      const state = getStepStatus(idx, primaryComplaint.status);
+                      return (
+                        <View key={st.label} style={styles.timelineStep}>
+                          {state === 'COMPLETED' ? (
+                            <View style={styles.timelineCircleCompleted}>
+                              <Ionicons name="checkmark" size={12} color="#FFF" />
+                            </View>
+                          ) : state === 'CURRENT' ? (
+                            <View style={styles.timelineCircleCurrent}>
+                              <Ionicons name="search" size={14} color="#FFF" />
+                            </View>
+                          ) : (
+                            <View style={styles.timelineCirclePending} />
+                          )}
+                          <Text
+                            style={[
+                              styles.timelineLabel,
+                              state === 'CURRENT' && styles.timelineLabelCurrent,
+                            ]}
+                          >
+                            {st.label}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </TouchableOpacity>
+              );
+            })()
+          ) : (
+            <View style={styles.emptyCaseCard}>
+              <View style={styles.emptyCaseIconWrapper}>
+                <Ionicons name="document-text-outline" size={28} color="#0D4722" />
               </View>
-
-              <View style={styles.timelineStep}>
-                <View style={styles.timelineCircleCompleted}>
-                  <Ionicons name="checkmark" size={12} color="#FFF" />
-                </View>
-                <Text style={styles.timelineLabel}>Under Review</Text>
-              </View>
-
-              <View style={styles.timelineStep}>
-                <View style={styles.timelineCircleCurrent}>
-                  <Ionicons name="search" size={14} color="#FFF" />
-                </View>
-                <Text style={[styles.timelineLabel, styles.timelineLabelCurrent]}>
-                  Under{'\n'}Investigation
-                </Text>
-              </View>
-
-              <View style={styles.timelineStep}>
-                <View style={styles.timelineCirclePending} />
-                <Text style={styles.timelineLabel}>Resolved</Text>
-              </View>
-
-              <View style={styles.timelineStep}>
-                <View style={styles.timelineCirclePending} />
-                <Text style={styles.timelineLabel}>Closed</Text>
-              </View>
+              <Text style={styles.emptyCaseTitle}>No Complaints Filed Yet</Text>
+              <Text style={styles.emptyCaseSubtitle}>
+                If your human rights have been violated, submit a complaint to initiate an official investigation.
+              </Text>
+              <TouchableOpacity
+                style={styles.emptySubmitBtn}
+                onPress={() => navigation.navigate('SubmitComplaint')}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.emptySubmitBtnText}>Submit a Complaint</Text>
+                <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+              </TouchableOpacity>
             </View>
-          </View>
+          )}
         </View>
         )}
 
@@ -259,36 +390,68 @@ export default function HomeScreen({ navigation }: Props) {
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Updates</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
+            {complaints.length > 0 && (
+              <TouchableOpacity onPress={() => navigation.navigate('MyComplaints')}>
+                <Text style={styles.viewAllText}>View All</Text>
+              </TouchableOpacity>
+            )}
           </View>
 
-          <View style={styles.updateCard}>
-            <View style={[styles.updateIconWrapper, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="document-text-outline" size={20} color="#0D4722" />
-            </View>
-            <View style={styles.updateTexts}>
-              <Text style={styles.updateDesc}>Investigator has updated the case status.</Text>
-              <View style={styles.updateMetaRow}>
-                <Text style={styles.updateCaseId}>Case #JN-2024-0156</Text>
-                <Text style={styles.updateTime}>2 hours ago</Text>
-              </View>
-            </View>
-          </View>
+          {(() => {
+            const recentUpdates = complaints
+              .flatMap((c) =>
+                (c.statusTimeline || []).map((t) => ({
+                  ...t,
+                  trackingNumber: c.trackingNumber,
+                  complaintTitle: c.title,
+                  complaint: c,
+                }))
+              )
+              .sort(
+                (a, b) =>
+                  new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+              )
+              .slice(0, 3);
 
-          <View style={styles.updateCard}>
-            <View style={[styles.updateIconWrapper, { backgroundColor: '#FFF3E0' }]}>
-              <Ionicons name="cloud-upload-outline" size={20} color="#E65100" />
-            </View>
-            <View style={styles.updateTexts}>
-              <Text style={styles.updateDesc}>New evidence has been uploaded.</Text>
-              <View style={styles.updateMetaRow}>
-                <Text style={styles.updateCaseId}>Case #JN-2024-0156</Text>
-                <Text style={styles.updateTime}>5 hours ago</Text>
-              </View>
-            </View>
-          </View>
+            if (recentUpdates.length === 0) {
+              return (
+                <View style={styles.emptyUpdatesCard}>
+                  <Ionicons name="notifications-outline" size={24} color="#94A3B8" />
+                  <Text style={styles.emptyUpdatesText}>
+                    No updates yet. Investigation milestones and status updates will appear here.
+                  </Text>
+                </View>
+              );
+            }
+
+            return recentUpdates.map((item, index) => (
+              <TouchableOpacity
+                key={`${item.trackingNumber}-${index}-${item.timestamp}`}
+                style={styles.updateCard}
+                onPress={() =>
+                  navigation.navigate('ComplaintDetail', {
+                    complaintId: item.complaint._id || item.trackingNumber,
+                    complaint: item.complaint,
+                  })
+                }
+                activeOpacity={0.85}
+              >
+                <View style={[styles.updateIconWrapper, { backgroundColor: '#E8F5E9' }]}>
+                  <Ionicons name="document-text-outline" size={20} color="#0D4722" />
+                </View>
+                <View style={styles.updateTexts}>
+                  <Text style={styles.updateDesc} numberOfLines={2}>
+                    {item.title}
+                    {item.note ? ` — ${item.note}` : ''}
+                  </Text>
+                  <View style={styles.updateMetaRow}>
+                    <Text style={styles.updateCaseId}>Complaint #{item.trackingNumber}</Text>
+                    <Text style={styles.updateTime}>{formatTimeAgo(item.timestamp)}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ));
+          })()}
         </View>
         )}
         
@@ -792,6 +955,86 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 6,
+  },
+  /* ── Loading and Empty states for Citizen ── */
+  loadingBox: {
+    padding: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  loadingBoxText: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 8,
+  },
+  emptyCaseCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 18,
+    padding: 22,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  emptyCaseIconWrapper: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#E8F5E9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  emptyCaseTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  emptyCaseSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 17,
+    marginBottom: 14,
+  },
+  emptySubmitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#0D4722',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  emptySubmitBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  emptyUpdatesCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  emptyUpdatesText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 16,
   },
 });
+

@@ -7,11 +7,11 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Modal,
   TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
   Case,
@@ -54,11 +54,10 @@ export const CaseDetailScreen = ({ route, navigation }: any) => {
   const isAdmin = user?.role === 'ADMIN';
   const isCitizen = user?.role === 'CITIZEN';
   
-  // Authorization check: User can modify if Admin OR if investigator matches assignedInvestigatorId (or default demo inv-101)
+  // Authorization check: User can modify if Admin OR if investigator matches assignedInvestigatorId or email
   const isAssignedToMe: boolean = Boolean(
     isAdmin ||
     (caseData?.assignedInvestigatorId && userIdentifier && caseData.assignedInvestigatorId === userIdentifier) ||
-    caseData?.assignedInvestigatorId === 'inv-101' ||
     (user?.email && caseData?.assignedInvestigatorEmail && caseData.assignedInvestigatorEmail.toLowerCase() === user.email.toLowerCase())
   );
 

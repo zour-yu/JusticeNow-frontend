@@ -8,11 +8,11 @@ import {
   RefreshControl,
   ActivityIndicator,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   ScrollView,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Case, CaseStatus, CasePriority } from '../../../shared/types/case.types';
 import { ComplaintCategory } from '../../../shared/types/complaint.types';
