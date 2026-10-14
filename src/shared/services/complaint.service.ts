@@ -168,19 +168,21 @@ export const ComplaintService = {
   },
 
   async getMyComplaints(): Promise<Complaint[]> {
-    let list: Complaint[] = [];
     try {
       const response = await api.get('/complaints/my');
-      if (response.data && response.data.data) {
-        list = response.data.data;
+      if (response.data && Array.isArray(response.data.data)) {
+        return response.data.data.map((c: Complaint) => ({
+          ...c,
+          statusTimeline: [...(c.statusTimeline || [])].sort(
+            (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          ),
+        }));
       }
     } catch (err) {
-      console.log('Loading local mock complaints:', err);
+      console.log('Error fetching user complaints from backend, falling back to local store:', err);
     }
-    if (list.length === 0) {
-      list = [...localComplaintsStore];
-    }
-    return list.map((c) => ({
+
+    return localComplaintsStore.map((c) => ({
       ...c,
       statusTimeline: [...(c.statusTimeline || [])].sort(
         (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()

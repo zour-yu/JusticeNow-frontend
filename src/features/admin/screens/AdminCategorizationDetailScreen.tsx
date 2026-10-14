@@ -7,8 +7,8 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Complaint, ComplaintCategory } from '../../../shared/types/complaint.types';
 import { ComplaintService } from '../../../shared/services/complaint.service';

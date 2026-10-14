@@ -3,16 +3,21 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { auth } from '../config/firebase';
 
-// Automatically detect host IP from Metro / Expo Go
+// Automatically detect host IP from Metro / Expo Go or Environment Variable
 const getBackendUrl = () => {
-  // Extract host IP from Expo Constants if available (e.g. "192.168.1.7:8081" -> "192.168.1.7")
+  // 1. Dynamic detection from Metro host IP (automatically adapts to current Wi-Fi/Hotspot IP in dev)
   const hostUri = Constants.expoConfig?.hostUri || Constants.manifest2?.extra?.expoGo?.debuggerHost;
   if (hostUri) {
     const ip = hostUri.split(':')[0];
     return `http://${ip}:5000`;
   }
 
-  // Fallback for Android emulator / physical device on current network
+  // 2. Environment variable override (e.g. for standalone build or custom tunnel)
+  if (process.env.EXPO_PUBLIC_BACKEND_URL) {
+    return process.env.EXPO_PUBLIC_BACKEND_URL;
+  }
+
+  // 3. Fallback for physical device on current network
   if (Platform.OS === 'android') {
     return 'http://192.168.1.7:5000';
   }
