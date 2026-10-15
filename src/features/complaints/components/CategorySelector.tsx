@@ -1,56 +1,92 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import { ComplaintCategory, CategoryInfo } from '../../../shared/types/complaint.types';
 
-export const CATEGORIES: CategoryInfo[] = [
+export interface ExtendedCategoryInfo extends CategoryInfo {
+  iconName: string;
+  iconFamily: 'Ionicons' | 'MaterialCommunityIcons' | 'MaterialIcons';
+  iconColor: string;
+  bgColor: string;
+}
+
+export const CATEGORIES: ExtendedCategoryInfo[] = [
   {
     key: ComplaintCategory.POLICE_MISCONDUCT,
     label: 'Police Misconduct',
     icon: '🛡️',
     description: 'Excessive force, unlawful arrest, harassment',
-    color: '#EF4444',
+    color: '#1C4D31',
+    iconName: 'shield-outline',
+    iconFamily: 'Ionicons',
+    iconColor: '#1C4D31',
+    bgColor: '#CFE4D4',
   },
   {
     key: ComplaintCategory.DISCRIMINATION,
     label: 'Discrimination',
     icon: '⚖️',
     description: 'Racial, religious, gender, or disability bias',
-    color: '#F59E0B',
+    color: '#4C768D',
+    iconName: 'scale-balance',
+    iconFamily: 'MaterialCommunityIcons',
+    iconColor: '#4C768D',
+    bgColor: '#D4E5EC',
   },
   {
     key: ComplaintCategory.ARBITRARY_DETENTION,
     label: 'Arbitrary Detention',
     icon: '🔒',
     description: 'Detention without charge, illegal custody',
-    color: '#6366F1',
+    color: '#D97706',
+    iconName: 'lock-closed',
+    iconFamily: 'Ionicons',
+    iconColor: '#D97706',
+    bgColor: '#FDEFC7',
   },
   {
     key: ComplaintCategory.FREEDOM_OF_EXPRESSION,
     label: 'Freedom of Speech',
     icon: '📢',
     description: 'Censorship, journalist intimidation, protest bans',
-    color: '#3B82F6',
+    color: '#DC2626',
+    iconName: 'megaphone',
+    iconFamily: 'Ionicons',
+    iconColor: '#DC2626',
+    bgColor: '#E2E8F0',
   },
   {
     key: ComplaintCategory.LABOR_RIGHTS,
     label: 'Labor & Worker Rights',
     icon: '👷',
     description: 'Forced labor, wage theft, hazardous conditions',
-    color: '#10B981',
+    color: '#D97706',
+    iconName: 'hard-hat',
+    iconFamily: 'MaterialCommunityIcons',
+    iconColor: '#D97706',
+    bgColor: '#FEF3C7',
   },
   {
     key: ComplaintCategory.GENDER_BASED_VIOLENCE,
     label: 'Gender-Based Violence',
     icon: '🤝',
     description: 'Harassment, domestic violence, abuse of power',
-    color: '#EC4899',
+    color: '#DB2777',
+    iconName: 'hand-heart',
+    iconFamily: 'MaterialCommunityIcons',
+    iconColor: '#DB2777',
+    bgColor: '#FCE7F3',
   },
   {
     key: ComplaintCategory.CHILD_RIGHTS,
     label: 'Child Rights & Welfare',
     icon: '🧒',
     description: 'Child exploitation, neglect, denial of schooling',
-    color: '#8B5CF6',
+    color: '#7C3AED',
+    iconName: 'child-care',
+    iconFamily: 'MaterialIcons',
+    iconColor: '#7C3AED',
+    bgColor: '#EDE9FE',
   },
   {
     key: ComplaintCategory.OTHER,
@@ -58,6 +94,10 @@ export const CATEGORIES: CategoryInfo[] = [
     icon: '📋',
     description: 'General fundamental rights violation',
     color: '#64748B',
+    iconName: 'document-text-outline',
+    iconFamily: 'Ionicons',
+    iconColor: '#64748B',
+    bgColor: '#F1F5F9',
   },
 ];
 
@@ -70,11 +110,27 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
   selectedCategory,
   onSelectCategory,
 }) => {
+  const renderIcon = (cat: ExtendedCategoryInfo) => {
+    switch (cat.iconFamily) {
+      case 'MaterialCommunityIcons':
+        return <MaterialCommunityIcons name={cat.iconName as any} size={25} color={cat.iconColor} />;
+      case 'MaterialIcons':
+        return <MaterialIcons name={cat.iconName as any} size={25} color={cat.iconColor} />;
+      case 'Ionicons':
+      default:
+        return <Ionicons name={cat.iconName as any} size={25} color={cat.iconColor} />;
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Select Violation Category <Text style={styles.required}>*</Text></Text>
-      <Text style={styles.subtitle}>Choose the category that best describes the incident</Text>
-      
+      <Text style={styles.title}>
+        Select Violation Category <Text style={styles.required}>*</Text>
+      </Text>
+      <Text style={styles.subtitle}>
+        Choose the category that best describes the incident
+      </Text>
+
       <View style={styles.grid}>
         {CATEGORIES.map((cat) => {
           const isSelected = selectedCategory === cat.key;
@@ -84,22 +140,23 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
               style={[
                 styles.card,
                 isSelected && styles.cardSelected,
-                isSelected && { borderColor: '#0D4722', backgroundColor: '#F0FBF4' },
               ]}
               onPress={() => onSelectCategory(cat.key)}
-              activeOpacity={0.7}
+              activeOpacity={0.75}
             >
-              <View style={[styles.iconContainer, isSelected && { backgroundColor: '#E8F5E9' }]}>
-                <Text style={styles.icon}>{cat.icon}</Text>
+              <View style={[styles.iconContainer, { backgroundColor: cat.bgColor }]}>
+                {renderIcon(cat)}
               </View>
+
               <View style={styles.textContainer}>
-                <Text style={[styles.label, isSelected && styles.labelSelected]}>
+                <Text style={styles.label}>
                   {cat.label}
                 </Text>
                 <Text style={styles.description} numberOfLines={2}>
                   {cat.description}
                 </Text>
               </View>
+
               <View style={[styles.radioCircle, isSelected && styles.radioCircleActive]}>
                 {isSelected && <View style={styles.radioInner} />}
               </View>
@@ -113,89 +170,87 @@ export const CategorySelector: React.FC<CategorySelectorProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: 4,
+    marginVertical: 6,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 4,
   },
   required: {
-    color: '#EF4444',
+    color: '#DC2626',
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 13.5,
     color: '#6B7280',
-    marginBottom: 14,
+    marginBottom: 16,
+    lineHeight: 18,
   },
   grid: {
-    gap: 10,
+    gap: 12,
   },
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    borderWidth: 1,
+    borderColor: '#E5ECE6',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
     elevation: 1,
   },
   cardSelected: {
+    backgroundColor: '#EFF7F1',
+    borderColor: '#1C4D31',
     borderWidth: 1.5,
   },
   iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#FAFAFA',
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
-  },
-  icon: {
-    fontSize: 22,
+    marginRight: 14,
   },
   textContainer: {
     flex: 1,
+    paddingRight: 8,
   },
   label: {
-    fontSize: 15,
+    fontSize: 15.5,
     fontWeight: '700',
     color: '#111827',
-    marginBottom: 2,
-  },
-  labelSelected: {
-    color: '#0D4722',
-    fontWeight: '800',
+    marginBottom: 3,
   },
   description: {
-    fontSize: 12,
-    color: '#6B7280',
-    lineHeight: 16,
+    fontSize: 12.5,
+    color: '#4B5563',
+    lineHeight: 17,
   },
   radioCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.8,
+    borderColor: '#CBD5E1',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
+    marginLeft: 6,
   },
   radioCircleActive: {
-    borderColor: '#0D4722',
+    borderColor: '#1C4D31',
+    borderWidth: 2,
   },
   radioInner: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#0D4722',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#1C4D31',
   },
 });

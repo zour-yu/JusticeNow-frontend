@@ -12,6 +12,7 @@ import {
   StyleSheet,
   StatusBar,
   Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,12 @@ import {
 } from '../../../shared/types/complaint.types';
 import { ComplaintService } from '../../../shared/services/complaint.service';
 import { UploadService } from '../../../shared/services/upload.service';
+
+const SERIF_FONT = Platform.select({
+  ios: 'Georgia',
+  android: 'serif',
+  default: 'serif',
+});
 
 export const SubmitComplaintScreen = ({ navigation }: any) => {
   const [category, setCategory] = useState<ComplaintCategory>(
@@ -43,7 +50,7 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
   const [evidenceList, setEvidenceList] = useState<EvidenceItem[]>([]);
   const [newEvidenceName, setNewEvidenceName] = useState('');
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submittedComplaint, setSubmittedComplaint] = useState<Complaint | null>(
     null
@@ -170,7 +177,6 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
     setEvidenceList(evidenceList.filter((item) => item.id !== id));
   };
 
-
   const validateForm = () => {
     if (!title.trim()) {
       Alert.alert('Validation Error', 'Please enter a title or summary for the incident.');
@@ -235,7 +241,7 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F4F6F4" />
 
       {/* Top Header Bar */}
       <View style={styles.topBar}>
@@ -243,11 +249,12 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
           style={styles.navBackBtn}
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color="#0D4722" />
+          <Ionicons name="arrow-back" size={24} color="#163820" />
         </TouchableOpacity>
         <Text style={styles.topBarTitle}>File a Complaint</Text>
-        <View style={{ width: 24 }} />
+        <View style={{ width: 28 }} />
       </View>
 
       <ScrollView
@@ -264,18 +271,19 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
           </Text>
         </View>
 
-        {/* Section 1: Category Selector */}
-        <View style={styles.sectionCard}>
-          <CategorySelector
-            selectedCategory={category}
-            onSelectCategory={setCategory}
-          />
-        </View>
+        {/* Section 1: Category Selector (rendered directly without extra box) */}
+        <CategorySelector
+          selectedCategory={category}
+          onSelectCategory={setCategory}
+        />
 
         {/* Section 2: Incident Details */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Incident Details</Text>
-          
+          <Text style={styles.sectionSubtitle}>
+            Provide key facts about where and when the incident took place
+          </Text>
+
           {/* Title */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>
@@ -352,11 +360,11 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
           />
 
           {/* Witness Info */}
-          <View style={[styles.inputGroup, { marginTop: 14 }]}>
+          <View style={[styles.inputGroup, { marginTop: 16 }]}>
             <Text style={styles.label}>Witnesses or Bystanders (Optional)</Text>
             <TextInput
               style={styles.input}
-              placeholder="Names, contact details, or notes about witnesses"
+              placeholder="Names, contact details, or notes about..."
               placeholderTextColor="#9CA3AF"
               value={witnessInfo}
               onChangeText={setWitnessInfo}
@@ -364,33 +372,32 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
           </View>
         </View>
 
-        {/* Section 4: Evidence Attachments */}
+        {/* Section 4: Supporting Evidence (Image 2 style) */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeaderRow}>
-            <View>
+            <View style={{ flex: 1, paddingRight: 8 }}>
               <Text style={styles.sectionTitle}>Supporting Evidence</Text>
               <Text style={styles.sectionSubtitle}>Attach photos, documents, or video links</Text>
             </View>
             <TouchableOpacity
-              style={styles.addEvidenceButton}
+              style={styles.addEvidencePill}
               onPress={() => setShowEvidenceModal(true)}
               activeOpacity={0.8}
             >
-              <Ionicons name="add" size={16} color="#0D4722" style={{ marginRight: 2 }} />
-              <Text style={styles.addEvidenceText}>Attach</Text>
+              <Text style={styles.addEvidencePillText}>+ Attach</Text>
             </TouchableOpacity>
           </View>
 
           {evidenceList.length === 0 ? (
-            <View style={styles.emptyEvidenceBox}>
-              <Ionicons name="cloud-upload-outline" size={32} color="#0D4722" style={{ marginBottom: 6 }} />
+            <View style={styles.emptyEvidenceDashedBox}>
+              <Ionicons name="cloud-upload-outline" size={38} color="#163820" style={{ marginBottom: 6 }} />
               <Text style={styles.emptyEvidenceText}>No evidence files attached yet.</Text>
               <TouchableOpacity
-                style={styles.attachOutlineBtn}
+                style={styles.addDocButton}
                 onPress={() => setShowEvidenceModal(true)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.attachOutlineBtnText}>Add Document / Photo</Text>
+                <Text style={styles.addDocButtonText}>Add Document / Photo</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -401,9 +408,11 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
                     <Image source={{ uri: item.url }} style={styles.evidenceThumb} resizeMode="cover" />
                   ) : (
                     <View style={styles.evidenceThumbPlaceholder}>
-                      <Text style={styles.evidenceItemIcon}>
-                        {item.type === 'video' ? '🎥' : item.type === 'audio' ? '🎵' : '📄'}
-                      </Text>
+                      <Ionicons
+                        name={item.type === 'video' ? 'videocam-outline' : item.type === 'audio' ? 'musical-notes-outline' : 'document-outline'}
+                        size={22}
+                        color="#163820"
+                      />
                     </View>
                   )}
                   <View style={styles.evidenceItemInfo}>
@@ -417,8 +426,9 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
                   <TouchableOpacity
                     onPress={() => handleRemoveEvidence(item.id)}
                     style={styles.removeEvidenceBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <Ionicons name="close-circle" size={20} color="#EF4444" />
+                    <Ionicons name="close-circle" size={22} color="#EF4444" />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -426,7 +436,7 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
           )}
         </View>
 
-        {/* Section 5: Anonymous Toggle & Privacy */}
+        {/* Section 5: Anonymous Toggle & Privacy (Image 2 style) */}
         <View style={styles.sectionCard}>
           <View style={styles.switchRow}>
             <View style={styles.switchTextContainer}>
@@ -438,8 +448,8 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
             <Switch
               value={isAnonymous}
               onValueChange={setIsAnonymous}
-              trackColor={{ false: '#E5E7EB', true: '#A7F3D0' }}
-              thumbColor={isAnonymous ? '#0D4722' : '#FFFFFF'}
+              trackColor={{ false: '#E2E8E4', true: '#25633C' }}
+              thumbColor={'#FFFFFF'}
             />
           </View>
         </View>
@@ -452,7 +462,7 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
           activeOpacity={0.85}
         >
           {isSubmitting ? (
-            <ActivityIndicator color="#FFFFFF" />
+            <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
             <Text style={styles.submitButtonText}>Submit Complaint Officially</Text>
           )}
@@ -472,9 +482,17 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Attach Evidence File</Text>
+            <View style={styles.modalHeaderRow}>
+              <Text style={styles.modalTitle}>Attach Supporting Evidence</Text>
+              <TouchableOpacity
+                onPress={() => setShowEvidenceModal(false)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="close" size={24} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
             <Text style={styles.modalSubtitle}>
-              Select the file format or enter a custom label
+              Select media or documents that support your complaint
             </Text>
 
             <TextInput
@@ -492,7 +510,9 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
                 disabled={isUploadingEvidence}
                 activeOpacity={0.8}
               >
-                <Text style={styles.evidenceOptionIcon}>📸</Text>
+                <View style={[styles.modalOptionIconCircle, { backgroundColor: '#CFE4D4' }]}>
+                  <Ionicons name="camera-outline" size={24} color="#163820" />
+                </View>
                 <Text style={styles.evidenceOptionLabel}>Camera</Text>
                 <Text style={styles.evidenceOptionSub}>Photo / Video</Text>
               </TouchableOpacity>
@@ -503,7 +523,9 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
                 disabled={isUploadingEvidence}
                 activeOpacity={0.8}
               >
-                <Text style={styles.evidenceOptionIcon}>🖼️</Text>
+                <View style={[styles.modalOptionIconCircle, { backgroundColor: '#D4E5EC' }]}>
+                  <Ionicons name="images-outline" size={24} color="#2F5B73" />
+                </View>
                 <Text style={styles.evidenceOptionLabel}>Gallery</Text>
                 <Text style={styles.evidenceOptionSub}>Choose media</Text>
               </TouchableOpacity>
@@ -514,7 +536,9 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
                 disabled={isUploadingEvidence}
                 activeOpacity={0.8}
               >
-                <Text style={styles.evidenceOptionIcon}>📄</Text>
+                <View style={[styles.modalOptionIconCircle, { backgroundColor: '#EDE9FE' }]}>
+                  <Ionicons name="document-text-outline" size={24} color="#6D28D9" />
+                </View>
                 <Text style={styles.evidenceOptionLabel}>Files / PDF</Text>
                 <Text style={styles.evidenceOptionSub}>Documents</Text>
               </TouchableOpacity>
@@ -522,7 +546,7 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
 
             {isUploadingEvidence && (
               <View style={styles.uploadProgressBox}>
-                <ActivityIndicator size="small" color="#0D4722" />
+                <ActivityIndicator size="small" color="#163820" />
                 <Text style={styles.uploadProgressText}>
                   {uploadProgress !== null && uploadProgress > 0
                     ? `Uploading file (${uploadProgress}%)...`
@@ -554,7 +578,7 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, styles.successModalContent]}>
             <View style={styles.successIconCircle}>
-              <Ionicons name="checkmark" size={32} color="#0D4722" />
+              <Ionicons name="checkmark-circle" size={48} color="#163820" />
             </View>
 
             <Text style={styles.successTitle}>Complaint Submitted!</Text>
@@ -606,79 +630,82 @@ export const SubmitComplaintScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F4F6F4',
   },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F4F6F4',
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
   },
   navBackBtn: {
-    padding: 4,
+    padding: 6,
+    marginLeft: -6,
   },
   topBarTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0D4722',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#163820',
+    fontFamily: SERIF_FONT,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 10,
     paddingBottom: 40,
   },
   headerBanner: {
-    backgroundColor: '#0D4722',
+    backgroundColor: '#183E28',
     padding: 22,
-    borderRadius: 20,
-    marginBottom: 16,
-    shadowColor: '#0D4722',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    borderRadius: 24,
+    marginBottom: 20,
+    shadowColor: '#183E28',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
     elevation: 4,
   },
   headerTag: {
-    color: '#A7F3D0',
+    color: '#8ED6A5',
     fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 1,
-    marginBottom: 6,
+    letterSpacing: 1.2,
+    marginBottom: 8,
   },
   headerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
+    fontSize: 26,
+    fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 6,
+    fontFamily: SERIF_FONT,
+    marginBottom: 8,
   },
   headerSubtitle: {
-    fontSize: 13,
-    color: '#E8F5E9',
-    lineHeight: 18,
+    fontSize: 13.5,
+    color: '#D0E6D8',
+    lineHeight: 20,
   },
   sectionCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 16,
+    borderRadius: 22,
+    padding: 20,
+    marginTop: 14,
+    marginBottom: 6,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E5ECE6',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
+    shadowOpacity: 0.03,
     shadowRadius: 6,
-    elevation: 2,
+    elevation: 1,
   },
   sectionTitle: {
-    fontSize: 17,
-    fontWeight: '800',
+    fontSize: 17.5,
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 4,
   },
@@ -692,26 +719,26 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   label: {
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 6,
+    color: '#163820',
+    marginBottom: 7,
   },
   required: {
-    color: '#EF4444',
+    color: '#DC2626',
   },
   input: {
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F9FBF9',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
+    borderColor: '#DFE7E1',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 14.5,
     color: '#111827',
   },
   textArea: {
-    minHeight: 110,
+    minHeight: 115,
     paddingTop: 12,
   },
   sectionHeaderRow: {
@@ -720,79 +747,88 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 12,
   },
-  addEvidenceButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#C8E6C9',
+  addEvidencePill: {
+    backgroundColor: '#D7E8DC',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
   },
-  addEvidenceText: {
-    color: '#0D4722',
+  addEvidencePillText: {
+    color: '#163820',
     fontWeight: '700',
     fontSize: 13,
   },
-  emptyEvidenceBox: {
-    backgroundColor: '#FAFAFA',
+  emptyEvidenceDashedBox: {
     borderWidth: 1.5,
-    borderColor: '#E5E7EB',
+    borderColor: '#A8BBAE',
     borderStyle: 'dashed',
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 18,
+    paddingVertical: 26,
+    paddingHorizontal: 16,
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
   emptyEvidenceText: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 10,
+    fontSize: 13.5,
+    color: '#4B5563',
+    marginVertical: 10,
   },
-  attachOutlineBtn: {
+  addDocButton: {
     backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
+    borderWidth: 1.5,
+    borderColor: '#111827',
+    paddingHorizontal: 20,
+    paddingVertical: 9,
+    borderRadius: 22,
   },
-  attachOutlineBtnText: {
-    fontSize: 13,
-    color: '#0D4722',
+  addDocButtonText: {
+    fontSize: 13.5,
     fontWeight: '700',
+    color: '#111827',
   },
   evidenceListContainer: {
-    gap: 8,
+    gap: 10,
   },
   evidenceItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
-    padding: 10,
-    borderRadius: 10,
+    backgroundColor: '#F9FBF9',
+    padding: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#DFE7E1',
   },
-  evidenceItemIcon: {
-    fontSize: 20,
-    marginRight: 10,
+  evidenceThumb: {
+    width: 46,
+    height: 46,
+    borderRadius: 10,
+    marginRight: 12,
+  },
+  evidenceThumbPlaceholder: {
+    width: 46,
+    height: 46,
+    borderRadius: 10,
+    backgroundColor: '#EAEFEA',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   evidenceItemInfo: {
     flex: 1,
   },
   evidenceItemName: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '600',
     color: '#111827',
   },
   evidenceItemType: {
-    fontSize: 11,
+    fontSize: 11.5,
     color: '#6B7280',
     marginTop: 2,
   },
   removeEvidenceBtn: {
-    padding: 6,
+    padding: 4,
   },
   switchRow: {
     flexDirection: 'row',
@@ -804,27 +840,27 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   switchTitle: {
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 16,
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 4,
   },
   switchSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#6B7280',
-    lineHeight: 16,
+    lineHeight: 18,
   },
   submitButton: {
-    backgroundColor: '#0D4722',
-    paddingVertical: 16,
-    borderRadius: 12,
+    backgroundColor: '#1E4A2E',
+    paddingVertical: 18,
+    borderRadius: 32,
     alignItems: 'center',
-    shadowColor: '#0D4722',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 4,
-    marginTop: 8,
+    shadowColor: '#1E4A2E',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 5,
+    marginTop: 16,
     marginBottom: 12,
   },
   submitButtonDisabled: {
@@ -832,73 +868,82 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '800',
+    fontSize: 16.5,
+    fontWeight: '700',
     letterSpacing: 0.3,
   },
   disclaimerText: {
     textAlign: 'center',
-    fontSize: 12,
-    color: '#9CA3AF',
-    marginBottom: 20,
+    fontSize: 12.5,
+    color: '#6B7280',
+    marginBottom: 24,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.55)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 24,
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 420,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 14,
+    elevation: 6,
+  },
+  modalHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
   },
   modalTitle: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#111827',
-    marginBottom: 4,
   },
   modalSubtitle: {
     fontSize: 13,
     color: '#6B7280',
-    marginBottom: 16,
+    marginBottom: 18,
   },
   evidenceOptionRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: 20,
-    gap: 8,
+    gap: 10,
   },
   evidenceOptionBtn: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F9FBF9',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
+    borderColor: '#DFE7E1',
+    borderRadius: 16,
     paddingVertical: 14,
     alignItems: 'center',
   },
-  evidenceOptionIcon: {
-    fontSize: 24,
-    marginBottom: 6,
+  modalOptionIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
   },
   evidenceOptionLabel: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
     color: '#111827',
     textAlign: 'center',
   },
   evidenceOptionSub: {
-    fontSize: 10,
+    fontSize: 10.5,
     color: '#6B7280',
     marginTop: 2,
     textAlign: 'center',
@@ -908,32 +953,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     backgroundColor: '#E8F5E9',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 12,
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 14,
   },
   uploadProgressText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '600',
-    color: '#0D4722',
-  },
-  evidenceThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    marginRight: 10,
-  },
-  evidenceThumbPlaceholder: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
+    color: '#163820',
   },
   cancelModalBtn: {
-    paddingVertical: 10,
+    paddingVertical: 12,
     alignItems: 'center',
   },
   cancelModalBtnText: {
@@ -946,9 +976,9 @@ const styles = StyleSheet.create({
     paddingVertical: 32,
   },
   successIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     backgroundColor: '#E8F5E9',
     alignItems: 'center',
     justifyContent: 'center',
@@ -956,63 +986,66 @@ const styles = StyleSheet.create({
   },
   successTitle: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 6,
     textAlign: 'center',
+    fontFamily: SERIF_FONT,
   },
   successSubtitle: {
-    fontSize: 13,
+    fontSize: 13.5,
     color: '#6B7280',
     textAlign: 'center',
-    marginBottom: 20,
-    paddingHorizontal: 10,
+    marginBottom: 22,
+    paddingHorizontal: 12,
+    lineHeight: 19,
   },
   trackingBox: {
-    backgroundColor: '#F0FBF4',
-    padding: 16,
-    borderRadius: 14,
+    backgroundColor: '#F0F8F2',
+    padding: 18,
+    borderRadius: 16,
     width: '100%',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 22,
     borderWidth: 1,
-    borderColor: '#D1FAE5',
+    borderColor: '#CFE4D4',
   },
   trackingBoxLabel: {
     fontSize: 11,
     fontWeight: '800',
-    color: '#065F46',
-    letterSpacing: 1,
-    marginBottom: 4,
+    color: '#163820',
+    letterSpacing: 1.1,
+    marginBottom: 6,
   },
   trackingBoxNumber: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0D4722',
-    letterSpacing: 1,
+    color: '#163820',
+    letterSpacing: 1.5,
     marginBottom: 6,
   },
   trackingBoxHint: {
-    fontSize: 11,
-    color: '#6B7280',
+    fontSize: 11.5,
+    color: '#4B5563',
     textAlign: 'center',
+    lineHeight: 16,
   },
   viewDetailsBtn: {
-    backgroundColor: '#0D4722',
-    paddingVertical: 14,
-    borderRadius: 12,
+    backgroundColor: '#1E4A2E',
+    paddingVertical: 16,
+    borderRadius: 28,
     width: '100%',
     alignItems: 'center',
-    marginBottom: 10,
-    shadowColor: '#0D4722',
+    marginBottom: 12,
+    shadowColor: '#1E4A2E',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
     elevation: 3,
   },
   viewDetailsBtnText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 15.5,
     fontWeight: '700',
   },
   submitAnotherBtn: {
@@ -1020,9 +1053,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   submitAnotherBtnText: {
-    color: '#0D4722',
+    color: '#163820',
     fontSize: 14,
     fontWeight: '700',
   },
 });
-

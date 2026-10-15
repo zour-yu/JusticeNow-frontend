@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { ComplaintStatus } from '../../../shared/types/complaint.types';
 
 interface StatusBadgeProps {
@@ -7,79 +7,61 @@ interface StatusBadgeProps {
   size?: 'sm' | 'md';
 }
 
-export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' }) => {
+export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'sm' }) => {
   const getStatusConfig = () => {
     switch (status) {
       case ComplaintStatus.SUBMITTED:
         return {
           label: 'Submitted',
-          bgColor: '#F3F4F6',
-          textColor: '#4B5563',
-          borderColor: '#E5E7EB',
+          bgColor: '#D1E5D7',
+          textColor: '#1B442B',
         };
       case ComplaintStatus.UNDER_REVIEW:
         return {
           label: 'Under Review',
-          bgColor: '#FEF3C7',
+          bgColor: '#FDEFC7',
           textColor: '#92400E',
-          borderColor: '#FDE68A',
         };
       case ComplaintStatus.APPROVED:
-        return {
-          label: 'Approved',
-          bgColor: '#DCFCE7',
-          textColor: '#15803D',
-          borderColor: '#BBF7D0',
-        };
       case ComplaintStatus.CONVERTED_TO_CASE:
       case 'UNDER_INVESTIGATION':
-        return {
-          label: 'Under Investigation',
-          bgColor: '#D1FAE5',
-          textColor: '#065F46',
-          borderColor: '#A7F3D0',
-        };
       case 'PENDING':
         return {
-          label: 'Pending Start',
-          bgColor: '#FEF3C7',
-          textColor: '#92400E',
-          borderColor: '#FDE68A',
-        };
-      case 'RESOLVED':
-        return {
-          label: 'Resolved',
-          bgColor: '#ECFDF5',
-          textColor: '#047857',
-          borderColor: '#6EE7B7',
+          label: 'Under\nInvestigation',
+          bgColor: '#C8E0D0',
+          textColor: '#1B442B',
         };
       case 'CLOSED':
+      case 'Closed':
         return {
           label: 'Closed',
-          bgColor: '#F3F4F6',
-          textColor: '#4B5563',
-          borderColor: '#D1D5DB',
+          bgColor: '#D5DDE4',
+          textColor: '#475569',
+        };
+      case 'RESOLVED':
+      case 'DISCUSSED':
+        return {
+          label: 'Resolved',
+          bgColor: '#D1E5D7',
+          textColor: '#1B442B',
         };
       case 'NEW':
         return {
           label: 'New Case',
-          bgColor: '#EFF6FF',
-          textColor: '#1D4ED8',
-          borderColor: '#BFDBFE',
+          bgColor: '#D5EBDC',
+          textColor: '#163820',
         };
       case ComplaintStatus.REJECTED:
         return {
           label: 'Rejected',
-          bgColor: '#FEE2E2',
+          bgColor: '#FCE8E6',
           textColor: '#991B1B',
-          borderColor: '#FECACA',
         };
       default:
         return {
-          label: status,
-          bgColor: '#F3F4F6',
-          textColor: '#374151',
-          borderColor: '#E5E7EB',
+          label: typeof status === 'string' ? status.replace(/_/g, ' ') : status,
+          bgColor: '#D1E5D7',
+          textColor: '#1B442B',
         };
     }
   };
@@ -89,23 +71,18 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
 
   return (
     <View
-      style={{
-        backgroundColor: config.bgColor,
-        borderColor: config.borderColor,
-        borderWidth: 1,
-        paddingHorizontal: isSmall ? 8 : 12,
-        paddingVertical: isSmall ? 3 : 5,
-        borderRadius: 8,
-        alignSelf: 'flex-start',
-      }}
+      style={[
+        styles.badge,
+        { backgroundColor: config.bgColor },
+        isSmall ? styles.badgeSm : styles.badgeMd,
+      ]}
     >
       <Text
-        style={{
-          color: config.textColor,
-          fontSize: isSmall ? 10 : 11,
-          fontWeight: '700',
-          letterSpacing: 0.3,
-        }}
+        style={[
+          styles.text,
+          { color: config.textColor },
+          isSmall ? styles.textSm : styles.textMd,
+        ]}
       >
         {config.label}
       </Text>
@@ -113,3 +90,34 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
   );
 };
 
+const styles = StyleSheet.create({
+  badge: {
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  badgeSm: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+  badgeMd: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  text: {
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  textSm: {
+    fontSize: 11,
+    lineHeight: 14,
+  },
+  textMd: {
+    fontSize: 12.5,
+    lineHeight: 16,
+  },
+});

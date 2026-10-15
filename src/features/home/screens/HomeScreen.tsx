@@ -6,14 +6,14 @@ import {
   TouchableOpacity, 
   ScrollView,
   ImageBackground,
-  Image,
   Dimensions,
   RefreshControl,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../../shared/store/authStore';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { InvestigatorDashboard } from '../components/InvestigatorDashboard';
 import { AdminDashboard } from '../components/AdminDashboard';
 import { NotificationBell } from '../../notifications/components/NotificationBell';
@@ -44,7 +44,7 @@ function formatTimeAgo(timestamp: string): string {
 }
 
 function getStepStatus(stepIndex: number, complaintStatus: string) {
-  // 0: Submitted, 1: Under Review, 2: Under Investigation, 3: Resolved, 4: Closed
+  // 0: Received, 1: Under Review, 2: Under Investigation, 3: Discussed, 4: Closed
   let currentStepIndex = 0;
   if (complaintStatus === ComplaintStatus.UNDER_REVIEW) {
     currentStepIndex = 1;
@@ -55,7 +55,7 @@ function getStepStatus(stepIndex: number, complaintStatus: string) {
     complaintStatus === 'PENDING'
   ) {
     currentStepIndex = 2;
-  } else if (complaintStatus === 'RESOLVED') {
+  } else if (complaintStatus === 'RESOLVED' || complaintStatus === 'DISCUSSED') {
     currentStepIndex = 3;
   } else if (complaintStatus === 'CLOSED') {
     currentStepIndex = 4;
@@ -66,16 +66,40 @@ function getStepStatus(stepIndex: number, complaintStatus: string) {
   return 'PENDING';
 }
 
+function getCurrentStepIndex(complaintStatus: string): number {
+  if (complaintStatus === ComplaintStatus.UNDER_REVIEW) return 1;
+  if (
+    complaintStatus === ComplaintStatus.APPROVED ||
+    complaintStatus === ComplaintStatus.CONVERTED_TO_CASE ||
+    complaintStatus === 'UNDER_INVESTIGATION' ||
+    complaintStatus === 'PENDING'
+  ) return 2;
+  if (complaintStatus === 'RESOLVED' || complaintStatus === 'DISCUSSED') return 3;
+  if (complaintStatus === 'CLOSED') return 4;
+  return 0; // SUBMITTED / Received
+}
+
 const TIMELINE_STEPS = [
-  { label: 'Submitted', key: 'SUBMITTED' },
-  { label: 'Under Review', key: 'UNDER_REVIEW' },
+  { label: 'Received', key: 'SUBMITTED' },
+  { label: 'Under\nReview', key: 'UNDER_REVIEW' },
   { label: 'Under\nInvestigation', key: 'UNDER_INVESTIGATION' },
-  { label: 'Resolved', key: 'RESOLVED' },
+  { label: 'Discussed', key: 'DISCUSSED' },
   { label: 'Closed', key: 'CLOSED' },
 ];
 
+const DEFAULT_SAMPLE_CASE: Complaint = {
+  _id: 'sample-case-1',
+  trackingNumber: 'JN-2024-0156',
+  title: 'Police Investigation and abuse of power',
+  description: 'Official inquiry regarding misconduct and administrative review.',
+  status: ComplaintStatus.CONVERTED_TO_CASE,
+  createdAt: '2024-05-11T09:30:00.000Z',
+  updatedAt: '2024-05-11T14:30:00.000Z',
+  isAnonymous: false,
+} as unknown as Complaint;
+
 export default function HomeScreen({ navigation }: Props) {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [isLoadingComplaints, setIsLoadingComplaints] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -109,11 +133,6 @@ export default function HomeScreen({ navigation }: Props) {
     loadCitizenComplaints();
   };
 
-  const handleLogout = async () => {
-    await logout();
-    navigation.replace('Login');
-  };
-
   if (isAdmin) {
     return (
       <SafeAreaView style={styles.safe}>
@@ -130,16 +149,16 @@ export default function HomeScreen({ navigation }: Props) {
             style={styles.headerIconBtn} 
             onPress={() => navigation.navigate('Profile')}
           >
-            <Ionicons name="shield-checkmark" size={26} color="#0D4722" />
+            <Ionicons name="shield-checkmark" size={24} color="#1E4334" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Justice Now</Text>
           <TouchableOpacity 
             style={styles.headerIconBtn}
             onPress={() => navigation.navigate('AssignedCases')}
           >
-            <Ionicons name="briefcase-outline" size={26} color="#0D4722" />
-            <View style={[styles.adminBadge, { backgroundColor: '#0D4722' }]}>
-              <Text style={styles.adminBadgeText}>INV</Text>
+            <Ionicons name="briefcase-outline" size={24} color="#1E4334" />
+            <View style={[styles.roleBadge, { backgroundColor: '#1E4334' }]}>
+              <Text style={styles.roleBadgeText}>INV</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -148,49 +167,40 @@ export default function HomeScreen({ navigation }: Props) {
     );
   }
 
+  // Active complaint to display in the main tracker card
+  const primaryCase = complaints.length > 0 ? complaints[0] : DEFAULT_SAMPLE_CASE;
+  const isRealCase = complaints.length > 0;
+  const primaryStepIndex = getCurrentStepIndex(primaryCase.status);
+
+  const formattedDate = primaryCase.createdAt
+    ? new Date(primaryCase.createdAt).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    : '11 May 2024';
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.headerIconBtn} 
-          onPress={() => {
-            // Menu options
-          }}
+          onPress={() => navigation.navigate('Profile')}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="menu-outline" size={28} color="#0D4722" />
+          <Ionicons name="menu-outline" size={26} color="#183D2D" />
         </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Justice Now</Text>
+
         <View style={styles.headerRightRow}>
-          {isAdmin && (
-            <TouchableOpacity 
-              style={styles.headerIconBtn}
-              onPress={() => navigation.navigate('AdminComplaintsList')}
-            >
-              <Ionicons name="shield-checkmark-outline" size={26} color="#0D4722" />
-              <View style={styles.adminBadge}>
-                <Text style={styles.adminBadgeText}>A</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-
-          {isInvestigator && (
-            <TouchableOpacity 
-              style={styles.headerIconBtn}
-              onPress={() => navigation.navigate('AssignedCases')}
-            >
-              <Ionicons name="briefcase-outline" size={26} color="#0D4722" />
-              <View style={[styles.adminBadge, { backgroundColor: '#0D4722' }]}>
-                <Text style={styles.adminBadgeText}>INV</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-
           <TouchableOpacity 
             style={styles.headerIconBtn}
             onPress={() => navigation.navigate('Notifications')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <NotificationBell onPress={() => navigation.navigate('Notifications')} />
+            <NotificationBell color="#183D2D" size={24} onPress={() => navigation.navigate('Notifications')} />
           </TouchableOpacity>
         </View>
       </View>
@@ -203,107 +213,182 @@ export default function HomeScreen({ navigation }: Props) {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            colors={['#0D4722']}
-            tintColor="#0D4722"
+            colors={['#1E4334']}
+            tintColor="#1E4334"
           />
         }
       >
         {/* HERO SECTION */}
-        <View style={styles.heroContainer}>
-          <ImageBackground 
-            source={require('../../../../assets/hero_bg.png')} 
-            style={styles.heroBg}
-            imageStyle={{ borderRadius: 20 }}
-            resizeMode="cover"
-          >
-            <View style={styles.heroTextContainer}>
-              <Text style={styles.heroTitle}>
-                {isInvestigator ? 'Investigate Cases,' : isAdmin ? 'Review Complaints,' : 'Speak Up Today,'}
-              </Text>
-              <Text style={styles.heroTitle}>
-                {isInvestigator ? 'Uphold Justice.' : isAdmin ? 'Ensure Justice.' : 'Create a Better Tomorrow.'}
-              </Text>
-              <Text style={styles.heroSubtitle}>
-                {isInvestigator ? 'Investigator Workspace.' : isAdmin ? 'Admin Dashboard.' : 'We\'re here to help.'}
-              </Text>
-            </View>
-          </ImageBackground>
+        <View style={styles.heroOuterContainer}>
+          <View style={styles.heroCard}>
+            <ImageBackground 
+              source={require('../../../../assets/hero_bg.png')} 
+              style={styles.heroBgImage}
+              resizeMode="cover"
+            >
+              <View style={styles.heroTextContainer}>
+                <Text style={styles.heroTitle}>Speak Up Today,</Text>
+                <Text style={styles.heroTitle}>Create a Better Tomorrow.</Text>
+                <Text style={styles.heroSubtitle}>We're here to help.</Text>
+              </View>
+            </ImageBackground>
+          </View>
 
-          {/* FLOATING ACTION CARD */}
+          {/* FLOATING ACTION CARD ("Submit a Complaint") */}
           <TouchableOpacity 
             style={styles.floatingActionCard}
-            activeOpacity={0.8}
-            onPress={() => navigation.navigate(isInvestigator ? 'AssignedCases' : isAdmin ? 'AdminComplaintsList' : 'SubmitComplaint')}
+            activeOpacity={0.92}
+            onPress={() => navigation.navigate('SubmitComplaint')}
           >
             <View style={styles.floatingActionLeft}>
-              <View style={styles.pencilIconWrapper}>
-                <Ionicons 
-                  name={isInvestigator ? 'briefcase-outline' : isAdmin ? 'shield-checkmark-outline' : 'create-outline'} 
-                  size={20} 
-                  color="#0D4722" 
-                />
+              <View style={styles.floatingActionIconWrapper}>
+                <Ionicons name="chatbox-ellipses-outline" size={21} color="#D2E8DB" />
               </View>
               <View style={styles.floatingActionTexts}>
-                <Text style={styles.floatingActionTitle}>
-                  {isInvestigator ? 'Assigned Cases' : isAdmin ? 'Pending Complaints' : 'Submit a Complaint'}
-                </Text>
-                <Text style={styles.floatingActionDesc}>
-                  {isInvestigator ? 'Manage and investigate active cases.' : isAdmin ? 'Review awaiting decisions.' : 'Your voice can bring change.'}
-                </Text>
+                <Text style={styles.floatingActionTitle}>Submit a Complaint</Text>
+                <Text style={styles.floatingActionDesc}>Your voice can bring change</Text>
               </View>
             </View>
-            <View style={styles.arrowIconWrapper}>
-              <Ionicons name="arrow-forward" size={18} color="#0D4722" />
+            <View style={styles.floatingActionArrowWrapper}>
+              <Ionicons name="chevron-forward" size={17} color="#FFFFFF" />
             </View>
           </TouchableOpacity>
         </View>
-
-        {/* INVESTIGATOR TOOLS */}
-        {isInvestigator && (
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Investigator Workspace</Text>
-          
-          {/* Assigned Cases Card */}
-          <TouchableOpacity 
-            style={styles.adminToolCard}
-            onPress={() => navigation.navigate('AssignedCases')}
-          >
-            <View style={[styles.adminToolIcon, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="folder-open-outline" size={24} color="#0D4722" />
-            </View>
-            <View style={styles.adminToolContent}>
-              <Text style={styles.adminToolTitle}>My Assigned Cases</Text>
-              <Text style={styles.adminToolDesc}>
-                Review complaint details, evidence, and update investigation progress
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
-          </TouchableOpacity>
-        </View>
-        )}
 
         {/* TRACK YOUR CASE */}
-        {!isAdmin && !isInvestigator && (
         <View style={styles.sectionContainer}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Track Your Case</Text>
-            {complaints.length > 0 && (
-              <TouchableOpacity onPress={() => navigation.navigate('MyComplaints')}>
-                <Text style={styles.viewAllText}>View All ({complaints.length})</Text>
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity onPress={() => navigation.navigate('MyComplaints')}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
           </View>
 
-          {isLoadingComplaints ? (
+          {isLoadingComplaints && complaints.length === 0 ? (
             <View style={styles.loadingBox}>
-              <ActivityIndicator size="small" color="#0D4722" />
-              <Text style={styles.loadingBoxText}>Loading your complaint progress...</Text>
+              <ActivityIndicator size="small" color="#1E4334" />
+              <Text style={styles.loadingBoxText}>Loading your complaint details...</Text>
             </View>
-          ) : complaints.length > 0 ? (
-            (() => {
-              const primaryComplaint = complaints[0];
-              const formattedDate = primaryComplaint.createdAt
-                ? new Date(primaryComplaint.createdAt).toLocaleDateString('en-US', {
+          ) : (
+            <TouchableOpacity
+              style={styles.caseCard}
+              onPress={() => {
+                if (isRealCase) {
+                  navigation.navigate('ComplaintDetail', {
+                    complaintId: primaryCase._id || primaryCase.trackingNumber,
+                    complaint: primaryCase,
+                  });
+                } else {
+                  navigation.navigate('SubmitComplaint');
+                }
+              }}
+              activeOpacity={0.9}
+            >
+              {/* Card Header */}
+              <View style={styles.caseCardHeader}>
+                <Text style={styles.caseId}>Case #{primaryCase.trackingNumber}</Text>
+                <StatusBadge status={primaryCase.status} size="sm" />
+              </View>
+
+              {/* Subtitle */}
+              <Text style={styles.caseDesc} numberOfLines={2}>
+                Filed on {formattedDate} – {primaryCase.title}
+              </Text>
+
+              {/* 5-Step Stepper */}
+              <View style={styles.stepperContainer}>
+                {/* Connecting Line Segments */}
+                <View style={styles.stepperLineTrack}>
+                  {TIMELINE_STEPS.slice(0, -1).map((_, i) => {
+                    const isCompleted = i < primaryStepIndex;
+                    return (
+                      <View 
+                        key={`seg-${i}`} 
+                        style={[
+                          styles.lineSegment, 
+                          isCompleted ? styles.lineSegmentActive : styles.lineSegmentInactive
+                        ]} 
+                      />
+                    );
+                  })}
+                </View>
+
+                {/* Stepper Nodes */}
+                {TIMELINE_STEPS.map((st, idx) => {
+                  const state = getStepStatus(idx, primaryCase.status);
+                  const isCurrent = state === 'CURRENT';
+                  const isCompleted = state === 'COMPLETED';
+
+                  return (
+                    <View key={st.label} style={styles.stepperNodeContainer}>
+                      <View style={styles.nodeCircleWrapper}>
+                        {isCompleted ? (
+                          <View style={styles.nodeCompleted}>
+                            <Ionicons name="checkmark" size={13} color="#FFFFFF" />
+                          </View>
+                        ) : isCurrent ? (
+                          <View style={styles.nodeCurrentOuter}>
+                            <View style={styles.nodeCurrentInner}>
+                              <View style={styles.nodeCurrentDot} />
+                            </View>
+                          </View>
+                        ) : (
+                          <View style={styles.nodePending} />
+                        )}
+                      </View>
+                      <Text
+                        style={[
+                          styles.stepperLabel,
+                          isCurrent && styles.stepperLabelCurrent,
+                        ]}
+                      >
+                        {st.label}
+                      </Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* RECENT YOUR CASE */}
+        <View style={styles.sectionContainer}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Recent Your Case</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('MyComplaints')}>
+              <Text style={styles.viewAllText}>View All</Text>
+            </TouchableOpacity>
+          </View>
+
+          {(() => {
+            const recentList = complaints.slice(0, 3);
+
+            if (recentList.length === 0) {
+              return (
+                <TouchableOpacity
+                  style={styles.recentPreviewCard}
+                  activeOpacity={0.9}
+                  onPress={() => navigation.navigate('SubmitComplaint')}
+                >
+                  <View style={styles.recentCardHeader}>
+                    <Text style={styles.recentCaseId}>Case #{DEFAULT_SAMPLE_CASE.trackingNumber}</Text>
+                    <StatusBadge status={DEFAULT_SAMPLE_CASE.status} size="sm" />
+                  </View>
+                  <Text style={styles.recentCaseTitle} numberOfLines={1}>
+                    {DEFAULT_SAMPLE_CASE.title}
+                  </Text>
+                  <View style={styles.recentCaseFooter}>
+                    <Text style={styles.recentCaseDate}>Filed on {formattedDate}</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#7D9387" />
+                  </View>
+                </TouchableOpacity>
+              );
+            }
+
+            return recentList.map((c) => {
+              const cDate = c.createdAt
+                ? new Date(c.createdAt).toLocaleDateString('en-GB', {
                     day: 'numeric',
                     month: 'short',
                     year: 'numeric',
@@ -312,243 +397,79 @@ export default function HomeScreen({ navigation }: Props) {
 
               return (
                 <TouchableOpacity
-                  style={styles.caseCard}
+                  key={c._id || c.trackingNumber}
+                  style={styles.recentPreviewCard}
+                  activeOpacity={0.9}
                   onPress={() =>
                     navigation.navigate('ComplaintDetail', {
-                      complaintId: primaryComplaint._id || primaryComplaint.trackingNumber,
-                      complaint: primaryComplaint,
+                      complaintId: c._id || c.trackingNumber,
+                      complaint: c,
                     })
                   }
-                  activeOpacity={0.88}
                 >
-                  <View style={styles.caseCardHeader}>
-                    <Text style={styles.caseId}>Complaint #{primaryComplaint.trackingNumber}</Text>
-                    <StatusBadge status={primaryComplaint.status} size="sm" />
+                  <View style={styles.recentCardHeader}>
+                    <Text style={styles.recentCaseId}>Case #{c.trackingNumber}</Text>
+                    <StatusBadge status={c.status} size="sm" />
                   </View>
-                  <Text style={styles.caseDesc} numberOfLines={2}>
-                    Filed on {formattedDate}  •  {primaryComplaint.title}
+                  <Text style={styles.recentCaseTitle} numberOfLines={1}>
+                    {c.title}
                   </Text>
-
-                  {/* DYNAMIC TIMELINE */}
-                  <View style={styles.timelineContainer}>
-                    <View style={styles.timelineLine} />
-
-                    {TIMELINE_STEPS.map((st, idx) => {
-                      const state = getStepStatus(idx, primaryComplaint.status);
-                      return (
-                        <View key={st.label} style={styles.timelineStep}>
-                          {state === 'COMPLETED' ? (
-                            <View style={styles.timelineCircleCompleted}>
-                              <Ionicons name="checkmark" size={12} color="#FFF" />
-                            </View>
-                          ) : state === 'CURRENT' ? (
-                            <View style={styles.timelineCircleCurrent}>
-                              <Ionicons name="search" size={14} color="#FFF" />
-                            </View>
-                          ) : (
-                            <View style={styles.timelineCirclePending} />
-                          )}
-                          <Text
-                            style={[
-                              styles.timelineLabel,
-                              state === 'CURRENT' && styles.timelineLabelCurrent,
-                            ]}
-                          >
-                            {st.label}
-                          </Text>
-                        </View>
-                      );
-                    })}
+                  <View style={styles.recentCaseFooter}>
+                    <Text style={styles.recentCaseDate}>Filed on {cDate}</Text>
+                    <Ionicons name="chevron-forward" size={16} color="#7D9387" />
                   </View>
                 </TouchableOpacity>
               );
-            })()
-          ) : (
-            <View style={styles.emptyCaseCard}>
-              <View style={styles.emptyCaseIconWrapper}>
-                <Ionicons name="document-text-outline" size={28} color="#0D4722" />
-              </View>
-              <Text style={styles.emptyCaseTitle}>No Complaints Filed Yet</Text>
-              <Text style={styles.emptyCaseSubtitle}>
-                If your human rights have been violated, submit a complaint to initiate an official investigation.
-              </Text>
-              <TouchableOpacity
-                style={styles.emptySubmitBtn}
-                onPress={() => navigation.navigate('SubmitComplaint')}
-                activeOpacity={0.85}
-              >
-                <Text style={styles.emptySubmitBtnText}>Submit a Complaint</Text>
-                <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-        )}
-
-        {/* RECENT UPDATES */}
-        {!isAdmin && !isInvestigator && (
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Updates</Text>
-            {complaints.length > 0 && (
-              <TouchableOpacity onPress={() => navigation.navigate('MyComplaints')}>
-                <Text style={styles.viewAllText}>View All</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          {(() => {
-            const recentUpdates = complaints
-              .flatMap((c) =>
-                (c.statusTimeline || []).map((t) => ({
-                  ...t,
-                  trackingNumber: c.trackingNumber,
-                  complaintTitle: c.title,
-                  complaint: c,
-                }))
-              )
-              .sort(
-                (a, b) =>
-                  new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-              )
-              .slice(0, 3);
-
-            if (recentUpdates.length === 0) {
-              return (
-                <View style={styles.emptyUpdatesCard}>
-                  <Ionicons name="notifications-outline" size={24} color="#94A3B8" />
-                  <Text style={styles.emptyUpdatesText}>
-                    No updates yet. Investigation milestones and status updates will appear here.
-                  </Text>
-                </View>
-              );
-            }
-
-            return recentUpdates.map((item, index) => (
-              <TouchableOpacity
-                key={`${item.trackingNumber}-${index}-${item.timestamp}`}
-                style={styles.updateCard}
-                onPress={() =>
-                  navigation.navigate('ComplaintDetail', {
-                    complaintId: item.complaint._id || item.trackingNumber,
-                    complaint: item.complaint,
-                  })
-                }
-                activeOpacity={0.85}
-              >
-                <View style={[styles.updateIconWrapper, { backgroundColor: '#E8F5E9' }]}>
-                  <Ionicons name="document-text-outline" size={20} color="#0D4722" />
-                </View>
-                <View style={styles.updateTexts}>
-                  <Text style={styles.updateDesc} numberOfLines={2}>
-                    {item.title}
-                    {item.note ? ` — ${item.note}` : ''}
-                  </Text>
-                  <View style={styles.updateMetaRow}>
-                    <Text style={styles.updateCaseId}>Complaint #{item.trackingNumber}</Text>
-                    <Text style={styles.updateTime}>{formatTimeAgo(item.timestamp)}</Text>
-                  </View>
-                </View>
-              </TouchableOpacity>
-            ));
+            });
           })()}
         </View>
-        )}
-        
-        {/* ADMIN TOOLS */}
-        {isAdmin && (
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Admin Tools</Text>
-          
-          {/* Review Complaints */}
-          <TouchableOpacity 
-            style={styles.adminToolCard}
-            onPress={() => navigation.navigate('AdminComplaintsList')}
-          >
-            <View style={[styles.adminToolIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="checkmark-circle-outline" size={24} color="#D97706" />
-            </View>
-            <View style={styles.adminToolContent}>
-              <Text style={styles.adminToolTitle}>Review Complaints</Text>
-              <Text style={styles.adminToolDesc}>
-                Approve or reject pending complaints
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
-          </TouchableOpacity>
 
-          {/* Categorize Complaints */}
-          <TouchableOpacity 
-            style={styles.adminToolCard}
-            onPress={() => navigation.navigate('AdminCategorizationList')}
-          >
-            <View style={[styles.adminToolIcon, { backgroundColor: '#DBEAFE' }]}>
-              <Ionicons name="layers-outline" size={24} color="#0284C7" />
-            </View>
-            <View style={styles.adminToolContent}>
-              <Text style={styles.adminToolTitle}>Categorize Complaints</Text>
-              <Text style={styles.adminToolDesc}>
-                Assign or update complaint categories
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
-          </TouchableOpacity>
-
-          {/* Assign Investigators */}
-          <TouchableOpacity 
-            style={styles.adminToolCard}
-            onPress={() => navigation.navigate('AdminAssignInvestigator')}
-          >
-            <View style={[styles.adminToolIcon, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="person-add-outline" size={24} color="#0D4722" />
-            </View>
-            <View style={styles.adminToolContent}>
-              <Text style={styles.adminToolTitle}>Assign Investigators</Text>
-              <Text style={styles.adminToolDesc}>
-                Allocate cases and monitor investigator workloads
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
-          </TouchableOpacity>
-        </View>
-        )}
-        
-        {/* Extra padding for bottom navigation */}
-        <View style={{ height: 100 }} />
+        {/* Extra bottom padding so content doesn't get hidden behind bottom nav */}
+        <View style={{ height: 110 }} />
       </ScrollView>
 
       {/* BOTTOM NAVIGATION BAR */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="home" size={24} color="#0D4722" />
-          <Text style={[styles.navText, { color: '#0D4722' }]}>Home</Text>
+      <View style={styles.bottomNavContainer}>
+        <TouchableOpacity style={styles.navItem} activeOpacity={0.8}>
+          <Ionicons name="home" size={23} color="#1E4334" />
+          <Text style={[styles.navText, styles.navTextActive]}>Home</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.navItem}
-          onPress={() => navigation.navigate(isInvestigator ? 'AssignedCases' : 'MyComplaints')}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('MyComplaints')}
         >
-          <Ionicons name="folder-outline" size={24} color="#9CA3AF" />
-          <Text style={styles.navText}>{isInvestigator ? 'Assigned' : 'My Cases'}</Text>
+          <Ionicons name="folder-outline" size={23} color="#7D9387" />
+          <Text style={styles.navText}>My Case</Text>
         </TouchableOpacity>
 
-        <View style={styles.fabContainer}>
+        {/* Center Floating Action Button (+) */}
+        <View style={styles.centerFabAnchor}>
           <TouchableOpacity 
-            style={styles.fabBtn}
-            activeOpacity={0.9}
-            onPress={() => navigation.navigate(isInvestigator ? 'AssignedCases' : isAdmin ? 'AdminComplaintsList' : 'SubmitComplaint')}
+            style={styles.centerFab}
+            activeOpacity={0.92}
+            onPress={() => navigation.navigate('SubmitComplaint')}
           >
-            <Ionicons name={isInvestigator ? 'briefcase' : 'add'} size={30} color="#FFF" />
+            <Ionicons name="add" size={28} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.navItem}>
-          <Ionicons name="chatbubble-outline" size={24} color="#9CA3AF" />
+        <TouchableOpacity 
+          style={styles.navItem} 
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('Notifications')}
+        >
+          <Ionicons name="chatbubble-outline" size={23} color="#7D9387" />
           <Text style={styles.navText}>Messages</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Profile')}>
-          <Ionicons name="person-outline" size={24} color="#9CA3AF" />
+        <TouchableOpacity 
+          style={styles.navItem} 
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('Profile')}
+        >
+          <Ionicons name="person-outline" size={23} color="#7D9387" />
           <Text style={styles.navText}>Profile</Text>
         </TouchableOpacity>
       </View>
@@ -559,185 +480,190 @@ export default function HomeScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F3F6F2',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 15,
-    backgroundColor: '#FAFAFA',
+    paddingTop: 6,
+    paddingBottom: 12,
+    backgroundColor: '#F3F6F2',
   },
   headerRightRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   headerIconBtn: {
-    padding: 5,
-    position: 'relative',
+    padding: 6,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0D4722',
+    fontSize: 22,
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    fontWeight: '700',
+    color: '#16382B',
+    letterSpacing: -0.2,
   },
-  notificationBadge: {
+  roleBadge: {
     position: 'absolute',
-    top: 5,
-    right: 5,
-    backgroundColor: '#EF4444',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    top: 2,
+    right: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#FAFAFA',
+    borderColor: '#F3F6F2',
   },
-  notificationBadgeText: {
+  roleBadgeText: {
     color: '#FFF',
     fontSize: 8,
-    fontWeight: 'bold',
-  },
-  adminBadge: {
-    position: 'absolute',
-    top: 5,
-    right: 5,
-    backgroundColor: '#3B82F6',
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FAFAFA',
-  },
-  adminBadgeText: {
-    color: '#FFF',
-    fontSize: 8,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 20,
   },
+
   /* ── Hero Section ── */
-  heroContainer: {
-    marginHorizontal: 20, // Make it full-width
-    marginTop: 10,
-    marginBottom: 30,
+  heroOuterContainer: {
+    marginHorizontal: 16,
+    marginTop: 4,
+    marginBottom: 38,
     position: 'relative',
   },
-  heroBg: {
-    width: '100%',
-    height: 220,
-    borderRadius: 20, // Remove rounded corners for full-bleed look
+  heroCard: {
+    borderRadius: 28,
     overflow: 'hidden',
+    height: 275,
+    backgroundColor: '#DCE8E0',
+  },
+  heroBgImage: {
+    width: '100%',
+    height: '100%',
   },
   heroTextContainer: {
-    paddingTop: 25,
-    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingHorizontal: 22,
   },
   heroTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0D4722',
-    lineHeight: 28,
+    fontSize: 24,
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    fontWeight: '700',
+    color: '#133526',
+    lineHeight: 31,
+    letterSpacing: -0.4,
   },
   heroSubtitle: {
     fontSize: 14,
-    color: '#374151',
+    color: '#425F50',
     marginTop: 6,
-    fontWeight: '600',
+    fontWeight: '500',
   },
+
+  /* ── Floating Action Card ── */
   floatingActionCard: {
     position: 'absolute',
-    bottom: -25,
-    left: '5%',
-    width: '90%',
-    backgroundColor: '#0D4722',
-    borderRadius: 20,
-    paddingVertical: 18,
-    paddingHorizontal: 20,
+    bottom: -22,
+    left: 14,
+    right: 14,
+    backgroundColor: '#1E4334',
+    borderRadius: 22,
+    paddingVertical: 13,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.14)',
+    shadowColor: '#102A1E',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.32,
+    shadowRadius: 18,
+    elevation: 10,
   },
   floatingActionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
-  pencilIconWrapper: {
-    width: 38,
-    height: 38,
-    backgroundColor: '#FFF',
-    borderRadius: 10,
+  floatingActionIconWrapper: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
+    marginRight: 14,
   },
   floatingActionTexts: {
     justifyContent: 'center',
+    flex: 1,
   },
   floatingActionTitle: {
-    color: '#FFF',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '700',
-    marginBottom: 2,
+    letterSpacing: -0.2,
   },
   floatingActionDesc: {
-    color: '#A7F3D0',
+    color: '#A7C7B5',
     fontSize: 12,
+    marginTop: 2,
+    fontWeight: '400',
   },
-  arrowIconWrapper: {
-    width: 28,
-    height: 28,
-    backgroundColor: '#FFF',
-    borderRadius: 14,
+  floatingActionArrowWrapper: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginLeft: 10,
   },
+
   /* ── Sections ── */
   sectionContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 25,
+    paddingHorizontal: 18,
+    marginBottom: 26,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    marginBottom: 15,
+    alignItems: 'center',
+    marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#111827',
+    fontSize: 20,
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif', default: 'serif' }),
+    fontWeight: '600',
+    color: '#162E22',
+    letterSpacing: -0.3,
   },
   viewAllText: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#0D4722',
+    fontWeight: '500',
+    color: '#264E3A',
   },
-  /* ── Case Card ── */
+
+  /* ── Track Your Case Card ── */
   caseCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#143122',
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.05,
-    shadowRadius: 10,
+    shadowRadius: 18,
     elevation: 3,
+    borderWidth: 1,
+    borderColor: '#EDF3EE',
   },
   caseCardHeader: {
     flexDirection: 'row',
@@ -746,295 +672,219 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   caseId: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#111827',
-  },
-  statusBadge: {
-    backgroundColor: '#D1FAE5',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  statusBadgeText: {
-    color: '#065F46',
-    fontSize: 10,
+    fontSize: 16,
     fontWeight: '700',
+    color: '#152C21',
+    letterSpacing: -0.2,
   },
   caseDesc: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 25,
+    fontSize: 13,
+    color: '#5C7164',
+    lineHeight: 18,
+    marginBottom: 24,
   },
-  timelineContainer: {
+
+  /* ── 5-Step Horizontal Stepper ── */
+  stepperContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     position: 'relative',
-    marginTop: 10,
-    paddingHorizontal: 10,
+    marginTop: 4,
   },
-  timelineLine: {
+  stepperLineTrack: {
     position: 'absolute',
-    top: 10,
+    top: 14,
     left: 20,
     right: 20,
-    height: 2,
-    backgroundColor: '#E5E7EB',
+    flexDirection: 'row',
     zIndex: 0,
   },
-  timelineStep: {
+  lineSegment: {
+    flex: 1,
+    height: 2.5,
+  },
+  lineSegmentActive: {
+    backgroundColor: '#1E4334',
+  },
+  lineSegmentInactive: {
+    backgroundColor: '#DFE7E1',
+    height: 2,
+  },
+  stepperNodeContainer: {
     alignItems: 'center',
-    width: 50,
+    width: 58,
     zIndex: 1,
   },
-  timelineCircleCompleted: {
+  nodeCircleWrapper: {
+    height: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nodeCompleted: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#1E4334',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nodeCurrentOuter: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#D0E4D7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nodeCurrentInner: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#0D4722',
+    backgroundColor: '#1E4334',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  timelineCircleCurrent: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#0D4722',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: -5,
-    marginBottom: 4,
-    borderWidth: 3,
-    borderColor: '#E8F5E9',
+  nodeCurrentDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
   },
-  timelineCirclePending: {
+  nodePending: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#FFF',
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    marginBottom: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#CAD7D0',
   },
-  timelineLabel: {
-    fontSize: 9,
-    color: '#6B7280',
+  stepperLabel: {
+    fontSize: 10,
+    color: '#7B8F84',
     textAlign: 'center',
-    marginTop: 2,
+    marginTop: 8,
+    lineHeight: 13,
+    fontWeight: '500',
   },
-  timelineLabelCurrent: {
-    color: '#111827',
+  stepperLabelCurrent: {
+    color: '#152C21',
     fontWeight: '700',
   },
-  /* ── Recent Updates ── */
-  updateCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
+
+  /* ── Recent Cases Cards ── */
+  recentPreviewCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  updateIconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  updateTexts: {
-    flex: 1,
-  },
-  updateDesc: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 6,
-  },
-  updateMetaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  updateCaseId: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '700',
-  },
-  updateTime: {
-    fontSize: 11,
-    color: '#9CA3AF',
-  },
-  /* ── Admin Tools ── */
-  adminToolCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: '#FFF',
-    borderRadius: 14,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+    borderColor: '#EDF3EE',
+    shadowColor: '#143122',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
     elevation: 2,
   },
-  adminToolIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  adminToolContent: {
-    flex: 1,
-  },
-  adminToolTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: 2,
-  },
-  adminToolDesc: {
-    fontSize: 12,
-    color: '#6B7280',
-  },
-  /* ── Bottom Nav ── */
-  bottomNav: {
-    position: 'absolute',
-    bottom: 0,
-    width: '100%',
-    height: 80,
-    backgroundColor: '#FFF',
+  recentCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: 20,
-    paddingTop: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -5 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 10,
-  },
-  navItem: {
     alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 8,
   },
-  navText: {
-    fontSize: 10,
-    color: '#9CA3AF',
-    marginTop: 4,
-    fontWeight: '600',
+  recentCaseId: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#152C21',
   },
-  fabContainer: {
+  recentCaseTitle: {
+    fontSize: 13,
+    color: '#4B6255',
+    fontWeight: '500',
+    marginBottom: 10,
+  },
+  recentCaseFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -35,
   },
-  fabBtn: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#0D4722',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#0D4722',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+  recentCaseDate: {
+    fontSize: 12,
+    color: '#82958B',
   },
-  /* ── Loading and Empty states for Citizen ── */
+
+  /* ── Loading State ── */
   loadingBox: {
     padding: 24,
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#EDF3EE',
   },
   loadingBoxText: {
     fontSize: 12,
     color: '#6B7280',
     marginTop: 8,
   },
-  emptyCaseCard: {
+
+  /* ── Bottom Navigation ── */
+  bottomNavContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 76,
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 22,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  emptyCaseIconWrapper: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#E8F5E9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  emptyCaseTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  emptyCaseSubtitle: {
-    fontSize: 12,
-    color: '#6B7280',
-    textAlign: 'center',
-    lineHeight: 17,
-    marginBottom: 14,
-  },
-  emptySubmitBtn: {
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 22,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(26, 59, 41, 0.06)',
+    shadowColor: '#102A1E',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  navItem: {
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#0D4722',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 12,
+    justifyContent: 'center',
+    minWidth: 48,
   },
-  emptySubmitBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#FFFFFF',
+  navText: {
+    fontSize: 10,
+    color: '#7D9387',
+    marginTop: 4,
+    fontWeight: '500',
   },
-  emptyUpdatesCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
+  navTextActive: {
+    color: '#1E4334',
+    fontWeight: '700',
+  },
+  centerFabAnchor: {
+    marginTop: -30,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    justifyContent: 'center',
   },
-  emptyUpdatesText: {
-    fontSize: 12,
-    color: '#94A3B8',
-    textAlign: 'center',
-    marginTop: 6,
-    lineHeight: 16,
+  centerFab: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#1E4334',
+    borderWidth: 3.5,
+    borderColor: '#F3F6F2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1E4334',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.38,
+    shadowRadius: 12,
+    elevation: 10,
   },
 });
-
