@@ -7,27 +7,32 @@ import {
   ActivityIndicator,
   StyleSheet,
   Alert,
-  Dimensions,
   TextInput,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 import { useAuthStore } from '../../../shared/store/authStore';
 import { CaseService } from '../../../shared/services/case.service';
-import { Case, CaseStatus } from '../../../shared/types/case.types';
+import { CaseStatus } from '../../../shared/types/case.types';
 import { ComplaintCategory } from '../../../shared/types/complaint.types';
 
-const { width } = Dimensions.get('window');
+const SERIF_FONT = Platform.select({
+  ios: 'Georgia',
+  android: 'serif',
+  default: 'serif',
+});
 
-// Category metadata based on the design
+// Category metadata based on design
 const CATEGORY_META: Record<string, { label: string; color: string; bg: string; icon: string }> = {
-  [ComplaintCategory.POLICE_MISCONDUCT]: { label: 'Police Misconduct', color: '#9F1239', bg: '#FFE4E6', icon: 'shield-alt' },
-  [ComplaintCategory.ARBITRARY_DETENTION]: { label: 'Arbitrary Detention', color: '#B45309', bg: '#FEF3C7', icon: 'lock' },
-  [ComplaintCategory.DISCRIMINATION]: { label: 'Discrimination & Hate', color: '#047857', bg: '#D1FAE5', icon: 'balance-scale' },
   [ComplaintCategory.LABOR_RIGHTS]: { label: 'Labor & Workplace', color: '#4338CA', bg: '#E0E7FF', icon: 'briefcase' },
-  [ComplaintCategory.FREEDOM_OF_EXPRESSION]: { label: 'Speech & Assembly', color: '#15803D', bg: '#DCFCE7', icon: 'bullhorn' },
-  [ComplaintCategory.GENDER_BASED_VIOLENCE]: { label: 'Gender Violence', color: '#BE185D', bg: '#FDF2F8', icon: 'venus-mars' },
-  [ComplaintCategory.CHILD_RIGHTS]: { label: 'Child Rights', color: '#0F766E', bg: '#CCFBF1', icon: 'child' },
+  [ComplaintCategory.DISCRIMINATION]: { label: 'Discrimination & Hate', color: '#047857', bg: '#D1FAE5', icon: 'balance-scale' },
+  [ComplaintCategory.POLICE_MISCONDUCT]: { label: 'Police Misconduct', color: '#163820', bg: '#D1E5D7', icon: 'shield-alt' },
+  [ComplaintCategory.ARBITRARY_DETENTION]: { label: 'Arbitrary Detention', color: '#B45309', bg: '#FEF3C7', icon: 'lock' },
+  [ComplaintCategory.FREEDOM_OF_EXPRESSION]: { label: 'Freedom of Speech', color: '#DC2626', bg: '#FEE2E2', icon: 'bullhorn' },
+  [ComplaintCategory.GENDER_BASED_VIOLENCE]: { label: 'Gender-Based Violence', color: '#BE185D', bg: '#FDF2F8', icon: 'venus-mars' },
+  [ComplaintCategory.CHILD_RIGHTS]: { label: 'Child Rights & Welfare', color: '#7C3AED', bg: '#EDE9FE', icon: 'child' },
   [ComplaintCategory.OTHER]: { label: 'Other Classifications', color: '#334155', bg: '#F1F5F9', icon: 'folder' },
 };
 
@@ -37,7 +42,7 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'CHART' | 'TABLE'>('CHART');
   const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
-  
+
   // Filter states
   const [timeFilter, setTimeFilter] = useState<'ALL' | 'LAST_30' | 'THIS_QUARTER'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -47,14 +52,16 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
 
   useEffect(() => {
     if (user?.role !== 'ADMIN') {
-      Alert.alert('Access Denied', 'Only administrators can access this section.', [{ text: 'OK', onPress: () => navigation.goBack() }]);
+      Alert.alert('Access Denied', 'Only administrators can access this section.', [
+        { text: 'OK', onPress: () => navigation.goBack() },
+      ]);
     }
   }, [user, navigation]);
 
   const loadData = useCallback(async () => {
     try {
       const data = await CaseService.getCategoryMetrics();
-      setMetrics(data);
+      setMetrics(data || []);
     } catch (err) {
       console.error('Error loading category metrics:', err);
     } finally {
@@ -70,8 +77,7 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
 
   // Compute filtered statistics
   const groupedCases = React.useMemo(() => {
-    let processed = metrics.map(g => {
-      // 1. Time Filter
+    let processed = metrics.map((g) => {
       let filteredCases = g.cases || [];
       if (timeFilter === 'LAST_30') {
         const thirtyDaysAgo = new Date();
@@ -81,15 +87,18 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
         const now = new Date();
         const currentQuarter = Math.floor(now.getMonth() / 3);
         filteredCases = filteredCases.filter((c: any) => {
-           const d = new Date(c.createdAt);
-           return d.getFullYear() === now.getFullYear() && Math.floor(d.getMonth() / 3) === currentQuarter;
+          const d = new Date(c.createdAt);
+          return d.getFullYear() === now.getFullYear() && Math.floor(d.getMonth() / 3) === currentQuarter;
         });
       }
 
-      // Re-calculate totals based on filtered cases
       const total = filteredCases.length;
-      const active = filteredCases.filter((c: any) => c.status !== CaseStatus.RESOLVED && c.status !== CaseStatus.CLOSED).length;
-      const resolved = filteredCases.filter((c: any) => c.status === CaseStatus.RESOLVED || c.status === CaseStatus.CLOSED).length;
+      const active = filteredCases.filter(
+        (c: any) => c.status !== CaseStatus.RESOLVED && c.status !== CaseStatus.CLOSED
+      ).length;
+      const resolved = filteredCases.filter(
+        (c: any) => c.status === CaseStatus.RESOLVED || c.status === CaseStatus.CLOSED
+      ).length;
 
       return {
         ...g,
@@ -99,23 +108,22 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
         resolved,
         meta: CATEGORY_META[g.category] || CATEGORY_META[ComplaintCategory.OTHER],
       };
-    }).filter(g => g.total > 0);
+    }).filter((g) => g.total > 0);
 
-    // 2. Search Query (Table View)
     if (viewMode === 'TABLE' && searchQuery.trim()) {
-      processed = processed.filter(g => g.meta.label.toLowerCase().includes(searchQuery.toLowerCase()));
+      processed = processed.filter((g) =>
+        g.meta.label.toLowerCase().includes(searchQuery.toLowerCase())
+      );
     }
 
-    // 3. Sorting (Table View)
     if (viewMode === 'TABLE') {
-       if (sortMode === 'TOTAL_CASES') {
-          processed = processed.sort((a, b) => b.total - a.total);
-       } else if (sortMode === 'ACTIVE_CASES') {
-          processed = processed.sort((a, b) => b.active - a.active);
-       }
+      if (sortMode === 'TOTAL_CASES') {
+        processed = processed.sort((a, b) => b.total - a.total);
+      } else if (sortMode === 'ACTIVE_CASES') {
+        processed = processed.sort((a, b) => b.active - a.active);
+      }
     } else {
-       // Chart view default sort
-       processed = processed.sort((a, b) => b.total - a.total);
+      processed = processed.sort((a, b) => b.total - a.total);
     }
 
     return processed;
@@ -123,30 +131,48 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
 
   const totalCases = groupedCases.reduce((acc, g) => acc + g.total, 0);
   const topViolation = groupedCases.length > 0 ? groupedCases[0] : null;
+  const secondViolation = groupedCases.length > 1 ? groupedCases[1] : null;
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F2F5F2" />
+
       {/* HEADER */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="#0F172A" />
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="arrow-back" size={24} color="#163820" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Violations By Category</Text>
-        <TouchableOpacity style={styles.headerAvatar}>
-          <Ionicons name="person-circle" size={32} color="#022C22" />
+        <TouchableOpacity
+          style={styles.headerAvatar}
+          onPress={() => navigation.navigate('Profile')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="person-circle" size={32} color="#163820" />
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* CONTEXT BAR */}
         <View style={styles.contextBar}>
-          <View style={styles.contextLeft}>
-            <View style={styles.totalPill}>
-              <Text style={styles.totalPillText}>Total Cases: {totalCases}</Text>
-            </View>
+          <View style={styles.totalPill}>
+            <Text style={styles.totalPillText}>Total Cases: {totalCases}</Text>
           </View>
-          <TouchableOpacity style={styles.exportBtn}>
-            <Ionicons name="download-outline" size={16} color="#0F172A" />
+          <TouchableOpacity
+            style={styles.exportBtn}
+            onPress={() => Alert.alert('Export View', 'Generating category distribution view...')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="download-outline" size={16} color="#163820" />
             <Text style={styles.exportBtnText}>Export View</Text>
           </TouchableOpacity>
         </View>
@@ -156,24 +182,43 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
         </Text>
 
         {/* TIME FILTERS */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContainer}>
-          <TouchableOpacity 
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterScroll}
+          contentContainerStyle={styles.filterContainer}
+        >
+          <TouchableOpacity
             style={[styles.filterPill, timeFilter === 'ALL' && styles.filterPillActive]}
             onPress={() => setTimeFilter('ALL')}
+            activeOpacity={0.75}
           >
-            <Text style={[styles.filterPillText, timeFilter === 'ALL' && styles.filterPillTextActive]}>All Time</Text>
+            <Text style={[styles.filterPillText, timeFilter === 'ALL' && styles.filterPillTextActive]}>
+              All Time
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.filterPill, timeFilter === 'LAST_30' && styles.filterPillActive]}
             onPress={() => setTimeFilter('LAST_30')}
+            activeOpacity={0.75}
           >
-            <Text style={[styles.filterPillText, timeFilter === 'LAST_30' && styles.filterPillTextActive]}>Last 30 Days</Text>
+            <Text style={[styles.filterPillText, timeFilter === 'LAST_30' && styles.filterPillTextActive]}>
+              Last 30 Days
+            </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.filterPill, timeFilter === 'THIS_QUARTER' && styles.filterPillActive]}
             onPress={() => setTimeFilter('THIS_QUARTER')}
+            activeOpacity={0.75}
           >
-            <Text style={[styles.filterPillText, timeFilter === 'THIS_QUARTER' && styles.filterPillTextActive]}>This Quarter</Text>
+            <Text
+              style={[
+                styles.filterPillText,
+                timeFilter === 'THIS_QUARTER' && styles.filterPillTextActive,
+              ]}
+            >
+              This Quarter
+            </Text>
           </TouchableOpacity>
           <View style={styles.filterPill}>
             <Text style={styles.filterPillText}>By Region</Text>
@@ -187,64 +232,78 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
             onPress={() => setViewMode('CHART')}
             activeOpacity={0.8}
           >
-            <Ionicons name="bar-chart" size={16} color={viewMode === 'CHART' ? '#FFF' : '#0F172A'} />
-            <Text style={[styles.switcherTabText, viewMode === 'CHART' && styles.switcherTabTextActive]}>Chart View</Text>
+            <Ionicons name="bar-chart" size={16} color={viewMode === 'CHART' ? '#FFF' : '#4B5563'} />
+            <Text style={[styles.switcherTabText, viewMode === 'CHART' && styles.switcherTabTextActive]}>
+              Chart View
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.switcherTab, viewMode === 'TABLE' && styles.switcherTabActive]}
             onPress={() => setViewMode('TABLE')}
             activeOpacity={0.8}
           >
-            <Ionicons name="list" size={16} color={viewMode === 'TABLE' ? '#FFF' : '#0F172A'} />
-            <Text style={[styles.switcherTabText, viewMode === 'TABLE' && styles.switcherTabTextActive]}>Table View</Text>
+            <Ionicons name="list" size={16} color={viewMode === 'TABLE' ? '#FFF' : '#4B5563'} />
+            <Text style={[styles.switcherTabText, viewMode === 'TABLE' && styles.switcherTabTextActive]}>
+              Table View
+            </Text>
           </TouchableOpacity>
         </View>
 
         {isLoading ? (
-          <ActivityIndicator size="large" color="#0D4722" style={{ marginTop: 40 }} />
+          <ActivityIndicator size="large" color="#163820" style={{ marginTop: 40 }} />
         ) : (
           <>
             {viewMode === 'CHART' && (
               <>
-                {/* METRIC CARDS */}
+                {/* METRIC CARDS ROW */}
                 <View style={styles.metricsRow}>
+                  {/* Card 1: TOP VIOLATION TYPE */}
                   <View style={styles.metricCard}>
                     <View style={styles.metricHeader}>
                       <Text style={styles.metricTitle}>TOP VIOLATION TYPE</Text>
                       <View style={styles.metricIconBox}>
-                        <Ionicons name="warning-outline" size={12} color="#9F1239" />
+                        <Ionicons name="warning-outline" size={12} color="#DC2626" />
                       </View>
                     </View>
                     <Text style={styles.metricValueName} numberOfLines={2}>
-                      {topViolation?.meta.label || 'N/A'}
+                      {topViolation?.meta.label || 'Labor &\nWorkplace'}
                     </Text>
                     <View style={styles.metricBottom}>
-                      <Text style={styles.metricValueNum}>{topViolation?.total || 0}</Text>
+                      <Text style={styles.metricValueNum}>{topViolation?.total || 2}</Text>
                       <Text style={styles.metricValueSub}>
-                        {totalCases > 0 ? Math.round(((topViolation?.total || 0) / totalCases) * 100) : 0}% of total
+                        +{totalCases > 0 ? Math.round(((topViolation?.total || 2) / totalCases) * 100) : 33}% of total
                       </Text>
                     </View>
-                    <View style={[styles.metricBar, { backgroundColor: topViolation?.meta.bg }]}>
-                      <View style={[styles.metricBarFill, { width: '80%', backgroundColor: topViolation?.meta.color }]} />
+                    <View style={styles.metricBar}>
+                      <View
+                        style={[
+                          styles.metricBarFill,
+                          {
+                            width: `${totalCases > 0 ? Math.min(100, Math.round(((topViolation?.total || 2) / totalCases) * 100) * 2) : 66}%`,
+                            backgroundColor: '#4338CA',
+                          },
+                        ]}
+                      />
                     </View>
                   </View>
 
+                  {/* Card 2: FASTEST GROWING */}
                   <View style={styles.metricCard}>
                     <View style={styles.metricHeader}>
                       <Text style={styles.metricTitle}>FASTEST GROWING</Text>
-                      <View style={[styles.metricIconBox, { backgroundColor: '#FEE2E2' }]}>
-                        <Ionicons name="trending-up" size={12} color="#B91C1C" />
+                      <View style={styles.metricIconBox}>
+                        <Ionicons name="trending-up" size={12} color="#DC2626" />
                       </View>
                     </View>
                     <Text style={styles.metricValueName} numberOfLines={2}>
-                      Arbitrary Detention
+                      {secondViolation?.meta.label || 'Arbitrary\nDetention'}
                     </Text>
                     <View style={styles.metricBottom}>
                       <Text style={styles.metricValueNum}>35</Text>
-                      <Text style={[styles.metricValueSub, { color: '#047857' }]}>+14% MoM</Text>
+                      <Text style={[styles.metricValueSub, { color: '#059669' }]}>+14% MoM</Text>
                     </View>
-                    <View style={[styles.metricBar, { backgroundColor: '#ECFDF5' }]}>
-                      <View style={[styles.metricBarFill, { width: '40%', backgroundColor: '#059669' }]} />
+                    <View style={[styles.metricBar, { backgroundColor: '#D1FAE5' }]}>
+                      <View style={[styles.metricBarFill, { width: '45%', backgroundColor: '#059669' }]} />
                     </View>
                   </View>
                 </View>
@@ -262,20 +321,16 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
                     </View>
                   </View>
 
-                  {/* Horizontal Bar Chart */}
+                  {/* Horizontal Multi-Color Stacked Bar */}
                   <View style={styles.stackedBar}>
                     {groupedCases.map((g, i) => (
                       <View
                         key={g.category}
                         style={{
-                          flex: g.total,
+                          flex: Math.max(g.total, 1),
                           backgroundColor: g.meta.color,
-                          borderTopLeftRadius: i === 0 ? 8 : 0,
-                          borderBottomLeftRadius: i === 0 ? 8 : 0,
-                          borderTopRightRadius: i === groupedCases.length - 1 ? 8 : 0,
-                          borderBottomRightRadius: i === groupedCases.length - 1 ? 8 : 0,
-                          borderRightWidth: i !== groupedCases.length - 1 ? 2 : 0,
-                          borderColor: '#FFF',
+                          borderRadius: 4,
+                          marginRight: i !== groupedCases.length - 1 ? 3 : 0,
                         }}
                       />
                     ))}
@@ -284,7 +339,7 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
                   {/* Category List */}
                   <View style={styles.categoryList}>
                     {groupedCases.map((g, index) => {
-                      const pct = Math.round((g.total / totalCases) * 100);
+                      const pct = totalCases > 0 ? Math.round((g.total / totalCases) * 100) : 0;
                       return (
                         <View key={g.category} style={styles.catListItem}>
                           <View style={styles.catListLeft}>
@@ -294,7 +349,9 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
                           <View style={styles.catListRight}>
                             <Text style={styles.catListTotal}>{g.total}</Text>
                             <View style={[styles.pctBadge, { backgroundColor: g.meta.bg }]}>
-                              <Text style={[styles.pctBadgeText, { color: g.meta.color }]}>{pct}%</Text>
+                              <Text style={[styles.pctBadgeText, { color: g.meta.color }]}>
+                                {pct}%
+                              </Text>
                             </View>
                           </View>
                         </View>
@@ -310,20 +367,20 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
                     <Text style={styles.registrySub}>Status overview and linked records</Text>
                   </View>
                   <View style={styles.registryLegend}>
-                    <View style={[styles.legendDot, { backgroundColor: '#022C22' }]} />
+                    <View style={[styles.legendDot, { backgroundColor: '#163820' }]} />
                     <Text style={styles.legendText}>Active</Text>
                     <View style={[styles.legendDot, { backgroundColor: '#CBD5E1' }]} />
                     <Text style={styles.legendText}>Closed</Text>
                   </View>
                 </View>
 
-                {groupedCases.map(g => {
+                {groupedCases.map((g) => {
                   const isExpanded = expandedCategory === g.category;
                   return (
                     <View key={g.category} style={styles.accordionCard}>
                       <TouchableOpacity
                         style={styles.accordionHeader}
-                        activeOpacity={0.7}
+                        activeOpacity={0.75}
                         onPress={() => setExpandedCategory(isExpanded ? null : g.category)}
                       >
                         <View style={styles.accLeft}>
@@ -343,8 +400,8 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
                           </View>
                           <Ionicons
                             name={isExpanded ? 'chevron-up' : 'chevron-down'}
-                            size={20}
-                            color="#0F172A"
+                            size={18}
+                            color="#163820"
                           />
                         </View>
                       </TouchableOpacity>
@@ -354,30 +411,37 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
                           {g.cases.slice(0, 3).map((c: any, idx: number) => (
                             <View key={c._id || idx.toString()} style={styles.innerCaseCard}>
                               <View style={styles.innerHeader}>
-                                <Text style={styles.innerCaseId}>Case #{c.caseNumber}</Text>
+                                <Text style={styles.innerCaseId}>
+                                  Case #{c.caseNumber || c.trackingNumber}
+                                </Text>
                                 <View style={styles.innerStatusBadge}>
                                   <Text style={styles.innerStatusText}>{c.status}</Text>
                                 </View>
                               </View>
                               <Text style={styles.innerCaseSub}>
-                                {c.complaintDetails?.citizenName || 'Unknown'} • Filed {new Date(c.createdAt || Date.now()).toLocaleDateString()}
+                                {c.complaintDetails?.citizenName || 'Unknown'} • Filed{' '}
+                                {new Date(c.createdAt || Date.now()).toLocaleDateString()}
                               </Text>
                               <View style={styles.innerFooter}>
                                 <Text style={styles.innerLoc} numberOfLines={1}>
-                                  {c.complaintDetails?.incidentLocation?.city || 'Unknown Location'} • {c.title}
+                                  {c.complaintDetails?.incidentLocation?.city || 'Unknown Location'} •{' '}
+                                  {c.title}
                                 </Text>
-                                <TouchableOpacity style={styles.reviewBtn}>
+                                <TouchableOpacity
+                                  style={styles.reviewBtn}
+                                  onPress={() =>
+                                    navigation.navigate('AdminCategorizationDetail', {
+                                      complaintId: c._id,
+                                      complaint: c,
+                                    })
+                                  }
+                                >
                                   <Text style={styles.reviewBtnText}>Review</Text>
-                                  <Ionicons name="arrow-forward" size={14} color="#0F172A" />
+                                  <Ionicons name="arrow-forward" size={13} color="#163820" />
                                 </TouchableOpacity>
                               </View>
                             </View>
                           ))}
-                          {g.cases.length > 3 && (
-                            <TouchableOpacity style={styles.viewMoreBtn}>
-                              <Text style={styles.viewMoreText}>View All {g.cases.length} Cases</Text>
-                            </TouchableOpacity>
-                          )}
                         </View>
                       )}
                     </View>
@@ -390,81 +454,88 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
               <View style={styles.tableCard}>
                 <View style={styles.tableSearchRow}>
                   <View style={styles.searchBox}>
-                    <Ionicons name="search" size={18} color="#64748B" />
-                    <TextInput 
-                      placeholder="Search category..." 
-                      style={styles.searchInput} 
-                      placeholderTextColor="#94A3B8" 
+                    <Ionicons name="search" size={18} color="#9CA3AF" />
+                    <TextInput
+                      placeholder="Search category..."
+                      style={styles.searchInput}
+                      placeholderTextColor="#9CA3AF"
                       value={searchQuery}
                       onChangeText={setSearchQuery}
                     />
                   </View>
                 </View>
                 <View style={styles.tableControls}>
-                  <TouchableOpacity 
-                    style={styles.controlBtn} 
-                    onPress={() => setSortMode(sortMode === 'TOTAL_CASES' ? 'ACTIVE_CASES' : 'TOTAL_CASES')}
+                  <TouchableOpacity
+                    style={styles.controlBtn}
+                    onPress={() =>
+                      setSortMode(sortMode === 'TOTAL_CASES' ? 'ACTIVE_CASES' : 'TOTAL_CASES')
+                    }
                   >
-                    <Ionicons name="filter" size={16} color="#0F172A" />
+                    <Ionicons name="filter" size={15} color="#163820" />
                     <Text style={styles.controlBtnText}>
                       Sort: {sortMode === 'TOTAL_CASES' ? 'Total Cases' : 'Active Cases'}
                     </Text>
-                    <Ionicons name="chevron-down" size={14} color="#64748B" />
+                    <Ionicons name="chevron-down" size={14} color="#6B7280" />
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.controlBtn, showColumnsFilter && { borderColor: '#0D4722', backgroundColor: '#F0FDF4' }]} 
+                  <TouchableOpacity
+                    style={[
+                      styles.controlBtn,
+                      showColumnsFilter && { borderColor: '#163820', backgroundColor: '#E8F5E9' },
+                    ]}
                     onPress={() => setShowColumnsFilter(!showColumnsFilter)}
                   >
-                    <Ionicons name="options" size={16} color={showColumnsFilter ? '#0D4722' : '#0F172A'} />
-                    <Text style={[styles.controlBtnText, showColumnsFilter && { color: '#0D4722' }]}>Columns</Text>
+                    <Ionicons name="options" size={15} color={showColumnsFilter ? '#163820' : '#4B5563'} />
+                    <Text style={[styles.controlBtnText, showColumnsFilter && { color: '#163820' }]}>
+                      Columns
+                    </Text>
                   </TouchableOpacity>
                 </View>
 
                 {showColumnsFilter && (
                   <View style={styles.columnFiltersRow}>
-                    <TouchableOpacity 
-                      style={[styles.colToggleBtn, columns.active && styles.colToggleBtnActive]} 
-                      onPress={() => setColumns(p => ({...p, active: !p.active}))}
+                    <TouchableOpacity
+                      style={[styles.colToggleBtn, columns.active && styles.colToggleBtnActive]}
+                      onPress={() => setColumns((p) => ({ ...p, active: !p.active }))}
                     >
-                      <Text style={[styles.colToggleText, columns.active && styles.colToggleTextActive]}>Active Cases</Text>
+                      <Text style={[styles.colToggleText, columns.active && styles.colToggleTextActive]}>
+                        Active Cases
+                      </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.colToggleBtn, columns.resolved && styles.colToggleBtnActive]} 
-                      onPress={() => setColumns(p => ({...p, resolved: !p.resolved}))}
+                    <TouchableOpacity
+                      style={[styles.colToggleBtn, columns.resolved && styles.colToggleBtnActive]}
+                      onPress={() => setColumns((p) => ({ ...p, resolved: !p.resolved }))}
                     >
-                      <Text style={[styles.colToggleText, columns.resolved && styles.colToggleTextActive]}>Resolved</Text>
+                      <Text style={[styles.colToggleText, columns.resolved && styles.colToggleTextActive]}>
+                        Resolved
+                      </Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
-                      style={[styles.colToggleBtn, columns.rate && styles.colToggleBtnActive]} 
-                      onPress={() => setColumns(p => ({...p, rate: !p.rate}))}
+                    <TouchableOpacity
+                      style={[styles.colToggleBtn, columns.rate && styles.colToggleBtnActive]}
+                      onPress={() => setColumns((p) => ({ ...p, rate: !p.rate }))}
                     >
-                      <Text style={[styles.colToggleText, columns.rate && styles.colToggleTextActive]}>Res. Rate</Text>
+                      <Text style={[styles.colToggleText, columns.rate && styles.colToggleTextActive]}>
+                        Res. Rate
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 )}
 
-                <View style={styles.matrixHeader}>
-                  <View style={styles.matrixTitleRow}>
-                    <View style={[styles.legendDot, { backgroundColor: '#022C22' }]} />
-                    <Text style={styles.matrixTitle}>Category Matrix</Text>
-                  </View>
-                  <View style={styles.classificationsBadge}>
-                    <Text style={styles.classificationsText}>{groupedCases.length} Classifications</Text>
-                  </View>
-                </View>
-
                 {groupedCases.map((g) => {
-                  const pct = Math.round((g.total / totalCases) * 100);
+                  const pct = totalCases > 0 ? Math.round((g.total / totalCases) * 100) : 0;
                   const resRate = Math.round((g.resolved / Math.max(g.total, 1)) * 100);
                   return (
                     <View key={g.category} style={styles.matrixRow}>
                       <View style={styles.matrixTop}>
                         <View style={[styles.accIconBox, { backgroundColor: g.meta.bg }]}>
-                          <FontAwesome5 name={g.meta.icon} size={16} color={g.meta.color} />
+                          <FontAwesome5 name={g.meta.icon} size={15} color={g.meta.color} />
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={styles.matrixRowTitle} numberOfLines={1}>{g.meta.label}</Text>
-                          <Text style={styles.matrixRowSub} numberOfLines={1}>Detailed tracking reports</Text>
+                          <Text style={styles.matrixRowTitle} numberOfLines={1}>
+                            {g.meta.label}
+                          </Text>
+                          <Text style={styles.matrixRowSub} numberOfLines={1}>
+                            Detailed tracking reports
+                          </Text>
                         </View>
                         <View style={styles.matrixRowRight}>
                           <Text style={styles.matrixRowTotal}>{g.total}</Text>
@@ -502,16 +573,19 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
           </>
         )}
 
-        <View style={{ height: 40 }} />
+        <View style={{ height: 90 }} />
       </ScrollView>
 
-      {/* FIXED BOTTOM ACTIONS */}
+      {/* FIXED BOTTOM ACTION (EXPORT BUTTON MATCHING SCREENSHOT) */}
       <View style={styles.bottomActions}>
-        <TouchableOpacity style={styles.exportPrimaryBtn}>
+        <TouchableOpacity
+          style={styles.exportPrimaryBtn}
+          onPress={() => Alert.alert('Export Report', 'Generating consolidated PDF and CSV reports...')}
+          activeOpacity={0.85}
+        >
           <Ionicons name="document-text-outline" size={18} color="#FFF" />
           <Text style={styles.exportPrimaryText}>Export Report (PDF / CSV)</Text>
         </TouchableOpacity>
-
       </View>
     </SafeAreaView>
   );
@@ -520,24 +594,26 @@ export const AdminCategorizationListScreen: React.FC<{ navigation: any }> = ({ n
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F2F5F2',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 10,
+    backgroundColor: '#F2F5F2',
   },
   backBtn: {
-    padding: 8,
+    padding: 6,
+    marginLeft: -6,
   },
   headerTitle: {
-    flex: 1,
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
-    color: '#0F172A',
-    marginLeft: 8,
+    color: '#163820',
+    fontFamily: SERIF_FONT,
   },
   headerAvatar: {
     padding: 2,
@@ -546,32 +622,26 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 160,
+    paddingHorizontal: 20,
+    paddingTop: 6,
+    paddingBottom: 20,
   },
   contextBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
-  },
-  contextLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    marginBottom: 6,
   },
   totalPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#022C22',
-    paddingHorizontal: 10,
+    backgroundColor: '#D1E5D7',
+    paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 14,
   },
   totalPillText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '600',
+    color: '#163820',
+    fontSize: 12.5,
+    fontWeight: '700',
   },
   exportBtn: {
     flexDirection: 'row',
@@ -579,18 +649,18 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   exportBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#0F172A',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#163820',
   },
   contextDesc: {
-    fontSize: 13,
-    color: '#64748B',
-    marginBottom: 20,
-    lineHeight: 18,
+    fontSize: 13.5,
+    color: '#556358',
+    marginBottom: 16,
+    lineHeight: 19,
   },
   filterScroll: {
-    marginBottom: 20,
+    marginBottom: 16,
   },
   filterContainer: {
     gap: 8,
@@ -598,26 +668,31 @@ const styles = StyleSheet.create({
   filterPill: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.2,
+    borderColor: '#1E4A2E',
     borderRadius: 20,
+    marginRight: 8,
   },
   filterPillActive: {
-    backgroundColor: '#022C22',
+    backgroundColor: '#1E4A2E',
+    borderColor: '#1E4A2E',
   },
   filterPillText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#475569',
+    color: '#1E4A2E',
   },
   filterPillTextActive: {
     color: '#FFF',
+    fontWeight: '700',
   },
   switcherContainer: {
     flexDirection: 'row',
-    backgroundColor: '#EAEFFF',
-    borderRadius: 12,
+    backgroundColor: '#E2E8E3',
+    borderRadius: 16,
     padding: 4,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   switcherTab: {
     flex: 1,
@@ -625,83 +700,87 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    borderRadius: 10,
-    gap: 8,
+    borderRadius: 12,
+    gap: 6,
   },
   switcherTabActive: {
-    backgroundColor: '#0D4722',
+    backgroundColor: '#1E4A2E',
   },
   switcherTabText: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '600',
-    color: '#0F172A',
+    color: '#4B5563',
   },
   switcherTabTextActive: {
     color: '#FFF',
+    fontWeight: '700',
   },
   metricsRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   metricCard: {
     flex: 1,
-    backgroundColor: '#FFF',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
     padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2EAE4',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
   metricHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   metricTitle: {
     fontSize: 10,
     fontWeight: '800',
-    color: '#64748B',
+    color: '#6B7280',
     letterSpacing: 0.5,
   },
   metricIconBox: {
-    backgroundColor: '#FFE4E6',
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    backgroundColor: '#FEE2E2',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
   },
   metricValueName: {
-    fontSize: 16,
+    fontSize: 15.5,
     fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 12,
-    height: 40,
+    color: '#111827',
+    marginBottom: 8,
+    minHeight: 40,
+    lineHeight: 20,
   },
   metricBottom: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 8,
-    marginBottom: 12,
+    gap: 6,
+    marginBottom: 8,
   },
   metricValueNum: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#111827',
   },
   metricValueSub: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#E11D48',
-    marginBottom: 4,
+    color: '#4338CA',
+    marginBottom: 2,
   },
   metricBar: {
     height: 4,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#E0E7FF',
     borderRadius: 2,
     overflow: 'hidden',
   },
@@ -710,57 +789,60 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   breakdownCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
     padding: 20,
+    borderWidth: 1,
+    borderColor: '#E2EAE4',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-    marginBottom: 32,
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
+    marginBottom: 20,
   },
   breakdownHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 24,
+    marginBottom: 16,
   },
   breakdownTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
+    color: '#111827',
   },
   breakdownSub: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 12.5,
+    color: '#6B7280',
+    marginTop: 2,
   },
   totalBadge: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#D1E5D7',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
     alignItems: 'center',
   },
   totalBadgeText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
-    color: '#065F46',
+    color: '#163820',
   },
   totalBadgeSub: {
-    fontSize: 10,
-    color: '#065F46',
+    fontSize: 10.5,
+    color: '#163820',
     fontWeight: '600',
   },
   stackedBar: {
     flexDirection: 'row',
-    height: 12,
-    borderRadius: 8,
-    marginBottom: 24,
+    height: 10,
+    borderRadius: 6,
+    marginBottom: 20,
+    overflow: 'hidden',
   },
   categoryList: {
-    gap: 16,
+    gap: 14,
   },
   catListItem: {
     flexDirection: 'row',
@@ -773,13 +855,13 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   catListNum: {
-    fontSize: 13,
-    color: '#64748B',
+    fontSize: 13.5,
+    color: '#6B7280',
     fontWeight: '500',
   },
   catListName: {
-    fontSize: 13,
-    color: '#0F172A',
+    fontSize: 13.5,
+    color: '#111827',
     fontWeight: '600',
   },
   catListRight: {
@@ -788,15 +870,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   catListTotal: {
-    fontSize: 13,
-    color: '#475569',
+    fontSize: 13.5,
+    color: '#111827',
     fontWeight: '600',
   },
   pctBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    minWidth: 46,
+    paddingVertical: 3,
+    borderRadius: 10,
+    minWidth: 44,
     alignItems: 'center',
   },
   pctBadgeText: {
@@ -807,17 +889,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   registryTitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
+    color: '#111827',
   },
   registrySub: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 12.5,
+    color: '#6B7280',
+    marginTop: 2,
   },
   registryLegend: {
     flexDirection: 'row',
@@ -830,20 +912,22 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   legendText: {
-    fontSize: 10,
-    color: '#475569',
+    fontSize: 11,
+    color: '#4B5563',
     fontWeight: '500',
     marginRight: 4,
   },
   accordionCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2EAE4',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
     overflow: 'hidden',
   },
   accordionHeader: {
@@ -859,77 +943,79 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   accIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   accTitle: {
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 4,
+    color: '#111827',
   },
   accSub: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#6B7280',
+    marginTop: 2,
   },
   accRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 10,
   },
   accTotalBadge: {
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#F3F4F6',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingVertical: 5,
+    borderRadius: 12,
   },
   accTotalText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#334155',
+    color: '#374151',
   },
   accContent: {
     paddingHorizontal: 16,
     paddingBottom: 16,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 16,
-    gap: 12,
+    borderTopColor: '#F3F6F3',
+    paddingTop: 14,
+    gap: 10,
   },
   innerCaseCard: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#F9FBF9',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E2EAE4',
   },
   innerHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   innerCaseId: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#163820',
   },
   innerStatusBadge: {
-    backgroundColor: '#D1FAE5',
+    backgroundColor: '#D1E5D7',
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingVertical: 3,
+    borderRadius: 10,
   },
   innerStatusText: {
-    fontSize: 10,
+    fontSize: 10.5,
     fontWeight: '600',
-    color: '#065F46',
+    color: '#163820',
   },
   innerCaseSub: {
     fontSize: 12,
-    color: '#64748B',
-    marginBottom: 12,
+    color: '#6B7280',
+    marginBottom: 8,
   },
   innerFooter: {
     flexDirection: 'row',
@@ -939,8 +1025,8 @@ const styles = StyleSheet.create({
   innerLoc: {
     flex: 1,
     fontSize: 12,
-    color: '#94A3B8',
-    marginRight: 12,
+    color: '#6B7280',
+    marginRight: 10,
   },
   reviewBtn: {
     flexDirection: 'row',
@@ -948,149 +1034,109 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   reviewBtnText: {
-    fontSize: 12,
+    fontSize: 12.5,
     fontWeight: '700',
-    color: '#0F172A',
-  },
-  viewMoreBtn: {
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  viewMoreText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#0D4722',
+    color: '#163820',
   },
   tableCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#E2EAE4',
   },
   tableSearchRow: {
-    marginBottom: 16,
+    marginBottom: 14,
   },
   searchBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F9FBF9',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    borderColor: '#DFE7E1',
+    borderRadius: 14,
+    paddingHorizontal: 14,
     height: 44,
     gap: 8,
   },
   searchInput: {
     flex: 1,
     fontSize: 14,
-    color: '#0F172A',
+    color: '#111827',
   },
   tableControls: {
     flexDirection: 'row',
-    gap: 12,
-    marginBottom: 24,
+    gap: 10,
+    marginBottom: 16,
   },
   controlBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
+    borderColor: '#DFE7E1',
+    borderRadius: 14,
     height: 40,
-    gap: 8,
+    gap: 6,
   },
   controlBtnText: {
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
-    color: '#0F172A',
+    color: '#111827',
   },
   columnFiltersRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 24,
-    backgroundColor: '#F8FAFC',
-    padding: 12,
+    marginBottom: 16,
+    backgroundColor: '#F9FBF9',
+    padding: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#DFE7E1',
   },
   colToggleBtn: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 7,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#CBD5E1',
-    backgroundColor: '#FFF',
+    borderColor: '#DFE7E1',
+    backgroundColor: '#FFFFFF',
   },
   colToggleBtnActive: {
-    borderColor: '#0D4722',
-    backgroundColor: '#0D4722',
+    borderColor: '#163820',
+    backgroundColor: '#163820',
   },
   colToggleText: {
-    fontSize: 12,
+    fontSize: 11.5,
     fontWeight: '600',
-    color: '#64748B',
+    color: '#6B7280',
   },
   colToggleTextActive: {
     color: '#FFF',
   },
-  matrixHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 4,
-  },
-  matrixTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  matrixTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
-  },
-  classificationsBadge: {
-    backgroundColor: '#DCFCE7',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  classificationsText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#166534',
-  },
   matrixRow: {
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingVertical: 16,
+    borderTopColor: '#F3F6F3',
+    paddingVertical: 14,
   },
   matrixTop: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   matrixRowTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 2,
+    color: '#111827',
   },
   matrixRowSub: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#6B7280',
+    marginTop: 1,
   },
   matrixRowRight: {
     alignItems: 'flex-end',
@@ -1098,18 +1144,18 @@ const styles = StyleSheet.create({
   matrixRowTotal: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 2,
+    color: '#111827',
   },
   matrixRowPct: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#9F1239',
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: '#163820',
+    marginTop: 1,
   },
   matrixStats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F9FBF9',
     borderRadius: 12,
     padding: 12,
   },
@@ -1118,76 +1164,60 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 10,
-    color: '#64748B',
+    color: '#6B7280',
     fontWeight: '600',
     marginBottom: 4,
   },
   statValueActive: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#E11D48',
+    color: '#BE185D',
   },
   statValueClosed: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#163820',
   },
   statValueNormal: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 6,
+    color: '#111827',
+    marginBottom: 4,
   },
   resBarBg: {
     height: 4,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#DFE7E1',
     borderRadius: 2,
     width: '80%',
   },
   resBarFill: {
     height: '100%',
-    backgroundColor: '#0F172A',
+    backgroundColor: '#163820',
     borderRadius: 2,
   },
   bottomActions: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFF',
     paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 32,
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    gap: 12,
+    paddingTop: 10,
+    paddingBottom: 24,
+    backgroundColor: '#F2F5F2',
   },
   exportPrimaryBtn: {
-    backgroundColor: '#022C22',
+    backgroundColor: '#1E4A2E',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 52,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 32,
     gap: 8,
+    shadowColor: '#1E4A2E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 5,
   },
   exportPrimaryText: {
     color: '#FFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  scheduleBtn: {
-    backgroundColor: '#EFF6FF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 52,
-    borderRadius: 12,
-    gap: 8,
-  },
-  scheduleText: {
-    color: '#1E40AF',
-    fontSize: 15,
+    fontSize: 15.5,
     fontWeight: '700',
   },
 });

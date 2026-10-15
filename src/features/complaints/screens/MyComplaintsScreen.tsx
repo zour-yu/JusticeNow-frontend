@@ -9,12 +9,19 @@ import {
   ActivityIndicator,
   StyleSheet,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Complaint, ComplaintStatus } from '../../../shared/types/complaint.types';
 import { ComplaintService } from '../../../shared/services/complaint.service';
 import { ComplaintCard } from '../components/ComplaintCard';
+
+const SERIF_FONT = Platform.select({
+  ios: 'Georgia',
+  android: 'serif',
+  default: 'serif',
+});
 
 const FILTER_TABS = [
   { key: 'ALL', label: 'All Cases' },
@@ -69,7 +76,8 @@ export const MyComplaintsScreen = ({ navigation }: any) => {
           item.title.toLowerCase().includes(query) ||
           item.trackingNumber.toLowerCase().includes(query) ||
           item.category.toLowerCase().includes(query) ||
-          item.incidentLocation?.city.toLowerCase().includes(query)
+          item.incidentLocation?.city.toLowerCase().includes(query) ||
+          (item.caseId && item.caseId.toLowerCase().includes(query))
       );
     }
 
@@ -90,7 +98,7 @@ export const MyComplaintsScreen = ({ navigation }: any) => {
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F2F5F2" />
 
       {/* Top Header Bar */}
       <View style={styles.topBar}>
@@ -98,20 +106,23 @@ export const MyComplaintsScreen = ({ navigation }: any) => {
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.7}
         >
-          <Ionicons name="arrow-back" size={24} color="#0D4722" />
+          <Ionicons name="arrow-back" size={24} color="#163820" />
         </TouchableOpacity>
         <Text style={styles.topBarTitle}>My Cases</Text>
         <TouchableOpacity
           style={styles.headerActionBtn}
           onPress={() => navigation.navigate('SubmitComplaint')}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.7}
         >
-          <Ionicons name="add-circle-outline" size={26} color="#0D4722" />
+          <Ionicons name="add-circle-outline" size={28} color="#163820" />
         </TouchableOpacity>
       </View>
 
       <View style={styles.container}>
-        {/* Search and Filter Section */}
+        {/* Header Title & Subtitle */}
         <View style={styles.headerArea}>
           <Text style={styles.headerTitle}>Filed Complaints & Cases</Text>
           <Text style={styles.headerSubtitle}>
@@ -120,7 +131,7 @@ export const MyComplaintsScreen = ({ navigation }: any) => {
 
           {/* Search Input */}
           <View style={styles.searchBarContainer}>
-            <Ionicons name="search-outline" size={18} color="#0D4722" style={styles.searchIcon} />
+            <Ionicons name="search-outline" size={20} color="#9CA3AF" style={styles.searchIcon} />
             <TextInput
               style={styles.searchInput}
               placeholder="Search by Tracking Ref # or Title..."
@@ -148,7 +159,7 @@ export const MyComplaintsScreen = ({ navigation }: any) => {
                 <TouchableOpacity
                   style={[styles.filterChip, isActive && styles.filterChipActive]}
                   onPress={() => setActiveFilter(item.key)}
-                  activeOpacity={0.7}
+                  activeOpacity={0.75}
                 >
                   <Text
                     style={[
@@ -167,7 +178,7 @@ export const MyComplaintsScreen = ({ navigation }: any) => {
         {/* Complaints List */}
         {isLoading ? (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#0D4722" />
+            <ActivityIndicator size="large" color="#163820" />
             <Text style={styles.loadingText}>Loading complaints...</Text>
           </View>
         ) : (
@@ -180,8 +191,8 @@ export const MyComplaintsScreen = ({ navigation }: any) => {
               <RefreshControl
                 refreshing={isRefreshing}
                 onRefresh={onRefresh}
-                tintColor="#0D4722"
-                colors={['#0D4722']}
+                tintColor="#163820"
+                colors={['#163820']}
               />
             }
             renderItem={({ item }) => (
@@ -190,9 +201,9 @@ export const MyComplaintsScreen = ({ navigation }: any) => {
             ListEmptyComponent={
               <View style={styles.emptyState}>
                 <View style={styles.emptyIconCircle}>
-                  <Ionicons name="document-text-outline" size={36} color="#0D4722" />
+                  <Ionicons name="document-text-outline" size={36} color="#163820" />
                 </View>
-                <Text style={styles.emptyStateTitle}>No Complaints Found</Text>
+                <Text style={styles.emptyStateTitle}>No Cases Found</Text>
                 <Text style={styles.emptyStateSubtitle}>
                   {searchQuery || activeFilter !== 'ALL'
                     ? 'Try changing your search query or status filter.'
@@ -228,7 +239,7 @@ export const MyComplaintsScreen = ({ navigation }: any) => {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F2F5F2',
   },
   topBar: {
     flexDirection: 'row',
@@ -236,64 +247,68 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 12,
-    backgroundColor: '#FAFAFA',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingBottom: 10,
+    backgroundColor: '#F2F5F2',
   },
   backBtn: {
-    padding: 4,
+    padding: 6,
+    marginLeft: -6,
   },
   topBarTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0D4722',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#163820',
+    fontFamily: SERIF_FONT,
   },
   headerActionBtn: {
     padding: 4,
+    marginRight: -4,
   },
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F2F5F2',
   },
   headerArea: {
-    backgroundColor: '#FFFFFF',
-    paddingTop: 16,
+    paddingTop: 10,
     paddingHorizontal: 20,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
+    paddingBottom: 12,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 24,
+    fontWeight: '700',
     color: '#111827',
-    marginBottom: 4,
+    fontFamily: SERIF_FONT,
+    marginBottom: 6,
   },
   headerSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 14,
-    lineHeight: 18,
+    fontSize: 13.5,
+    color: '#556358',
+    marginBottom: 16,
+    lineHeight: 19,
   },
   searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FAFAFA',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#DFE7E1',
     marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: 10,
   },
   searchInput: {
     flex: 1,
     color: '#111827',
-    fontSize: 14,
+    fontSize: 14.5,
     padding: 0,
   },
   clearBtn: {
@@ -304,21 +319,21 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterChip: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#FAFAFA',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.2,
+    borderColor: '#1E4A2E',
     marginRight: 8,
   },
   filterChipActive: {
-    backgroundColor: '#0D4722',
-    borderColor: '#0D4722',
+    backgroundColor: '#1E4A2E',
+    borderColor: '#1E4A2E',
   },
   filterChipText: {
-    color: '#6B7280',
-    fontSize: 12,
+    color: '#1E4A2E',
+    fontSize: 13,
     fontWeight: '600',
   },
   filterChipTextActive: {
@@ -326,7 +341,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   listContent: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 6,
     paddingBottom: 95,
   },
   loadingContainer: {
@@ -355,9 +371,10 @@ const styles = StyleSheet.create({
   },
   emptyStateTitle: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#111827',
     marginBottom: 6,
+    fontFamily: SERIF_FONT,
   },
   emptyStateSubtitle: {
     fontSize: 13,
@@ -367,15 +384,15 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   emptyStateBtn: {
-    backgroundColor: '#0D4722',
+    backgroundColor: '#1E4A2E',
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 12,
-    shadowColor: '#0D4722',
+    borderRadius: 24,
+    shadowColor: '#1E4A2E',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.25,
     shadowRadius: 6,
     elevation: 3,
   },
@@ -388,25 +405,24 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 24,
     right: 20,
-    backgroundColor: '#0D4722',
+    backgroundColor: '#1E4A2E',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 13,
-    paddingHorizontal: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 22,
     borderRadius: 30,
-    shadowColor: '#0D4722',
+    shadowColor: '#1E4A2E',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 6,
   },
   fabIcon: {
     marginRight: 6,
   },
   fabText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 14.5,
     fontWeight: '700',
   },
 });
-

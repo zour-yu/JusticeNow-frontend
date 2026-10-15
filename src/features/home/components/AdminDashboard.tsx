@@ -7,16 +7,20 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
-  Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Case, CaseStatus, Investigator } from '../../../shared/types/case.types';
 import { Complaint, ComplaintStatus } from '../../../shared/types/complaint.types';
 import { CaseService } from '../../../shared/services/case.service';
 import { ComplaintService } from '../../../shared/services/complaint.service';
-import { UserService, InvestigatorApplicant, ManagedUser } from '../../../shared/services/user.service';
+import { UserService, InvestigatorApplicant } from '../../../shared/services/user.service';
 
-const { width } = Dimensions.get('window');
+const SERIF_FONT = Platform.select({
+  ios: 'Georgia',
+  android: 'serif',
+  default: 'serif',
+});
 
 interface Props {
   user: any;
@@ -41,11 +45,11 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
         UserService.getPendingInvestigators(),
         UserService.getAllUsers(),
       ]);
-      setCases(casesData);
-      setComplaints(complaintsData);
-      setInvestigators(investigatorsData);
-      setPendingApplicants(pendingData);
-      setUsersCount(usersData.length);
+      setCases(casesData || []);
+      setComplaints(complaintsData || []);
+      setInvestigators(investigatorsData || []);
+      setPendingApplicants(pendingData || []);
+      setUsersCount(usersData ? usersData.length : 0);
     } catch (err) {
       console.log('Error loading admin dashboard data:', err);
     } finally {
@@ -53,7 +57,6 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
       setIsRefreshing(false);
     }
   }, []);
-
 
   useEffect(() => {
     loadData();
@@ -70,7 +73,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
 
   const adminName = user?.firstName
     ? `${user.firstName} ${user.lastName || ''}`.trim()
-    : 'System Administrator';
+    : 'Admin 1';
 
   const pendingComplaints = complaints.filter(
     (c) => c.status === ComplaintStatus.SUBMITTED || c.status === ComplaintStatus.UNDER_REVIEW
@@ -80,15 +83,17 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
     (c) => !c.assignedInvestigatorId || c.assignedInvestigatorId === 'unassigned'
   );
 
-  const activeFieldCases = cases.filter(
-    (c) => c.status === CaseStatus.UNDER_INVESTIGATION
-  );
-
   const currentDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
   });
+
+  const getInitials = (firstName?: string, lastName?: string) => {
+    const first = firstName?.[0] || '';
+    const last = lastName?.[0] || '';
+    return (first + last).toUpperCase() || 'AD';
+  };
 
   return (
     <View style={styles.container}>
@@ -100,41 +105,40 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={onRefresh}
-            colors={['#0D4722']}
-            tintColor="#0D4722"
+            colors={['#163820']}
+            tintColor="#163820"
           />
         }
       >
-        {/* ── SLEEK ADMIN COMMAND HEADER ── */}
+        {/* ── SLEEK ADMIN COMMAND CONSOLE HEADER ── */}
         <View style={styles.adminHeaderCard}>
           <View style={styles.headerTopRow}>
             <View style={styles.adminRolePill}>
-              <Ionicons name="shield-checkmark" size={14} color="#A7F3D0" />
+              <Ionicons name="shield-checkmark-outline" size={14} color="#8CD4A4" />
               <Text style={styles.adminRolePillText}>ADMIN COMMAND CONSOLE</Text>
             </View>
             <Text style={styles.headerDate}>{currentDate}</Text>
           </View>
 
           <View style={styles.adminProfileRow}>
-            <View style={styles.adminAvatar}>
+            <View style={styles.adminAvatarGlow}>
               <Text style={styles.adminAvatarText}>
-                {user?.firstName?.[0] || 'A'}
-                {user?.lastName?.[0] || 'D'}
+                {getInitials(user?.firstName, user?.lastName)}
               </Text>
             </View>
             <View style={styles.adminProfileTexts}>
-              <Text style={styles.adminGreeting}>Welcome Back,</Text>
+              <Text style={styles.adminGreeting}>WELCOME BACK,</Text>
               <Text style={styles.adminNameText} numberOfLines={1}>
                 {adminName}
               </Text>
               <Text style={styles.adminSubText}>Chief Oversight & Case Governance</Text>
             </View>
             <TouchableOpacity
-              style={styles.profileBtn}
+              style={styles.settingsBtn}
               onPress={() => navigation.navigate('Profile')}
               activeOpacity={0.8}
             >
-              <Ionicons name="settings-outline" size={20} color="#D1FAE5" />
+              <Ionicons name="settings-outline" size={20} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
 
@@ -146,14 +150,14 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
             </View>
             <View style={styles.tickerDivider} />
             <View style={styles.tickerCol}>
-              <Text style={[styles.tickerNumber, pendingComplaints.length > 0 && { color: '#FCD34D' }]}>
+              <Text style={[styles.tickerNumber, { color: pendingComplaints.length > 0 ? '#FACC15' : '#FFFFFF' }]}>
                 {pendingComplaints.length}
               </Text>
               <Text style={styles.tickerLabel}>Pending Review</Text>
             </View>
             <View style={styles.tickerDivider} />
             <View style={styles.tickerCol}>
-              <Text style={[styles.tickerNumber, unassignedCases.length > 0 && { color: '#F87171' }]}>
+              <Text style={[styles.tickerNumber, { color: unassignedCases.length > 0 ? '#F87171' : '#FFFFFF' }]}>
                 {unassignedCases.length}
               </Text>
               <Text style={styles.tickerLabel}>Unassigned</Text>
@@ -170,7 +174,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
           </View>
         </View>
 
-        {/* ── SYSTEM OPERATIONS TILES (PRIMARY ACTIONS) ── */}
+        {/* ── ADMINISTRATIVE OPERATIONS ── */}
         <View style={styles.sectionWrapper}>
           <Text style={styles.sectionHeading}>Administrative Operations</Text>
 
@@ -180,15 +184,15 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
             onPress={() => navigation.navigate('AdminComplaintsList')}
             activeOpacity={0.85}
           >
-            <View style={[styles.actionIconWrapper, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="checkmark-done-circle" size={26} color="#D97706" />
+            <View style={[styles.actionIconWrapper, { backgroundColor: '#FDECD8' }]}>
+              <Ionicons name="checkmark-circle" size={28} color="#D97706" />
             </View>
             <View style={styles.actionCardTexts}>
               <View style={styles.actionTitleRow}>
                 <Text style={styles.actionCardTitle}>Review Complaints</Text>
                 {pendingComplaints.length > 0 && (
-                  <View style={styles.actionBadgeWarning}>
-                    <Text style={styles.actionBadgeWarningText}>
+                  <View style={[styles.actionBadge, { backgroundColor: '#FEF3C7' }]}>
+                    <Text style={[styles.actionBadgeText, { color: '#B45309' }]}>
                       {pendingComplaints.length} PENDING
                     </Text>
                   </View>
@@ -198,7 +202,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
                 Evaluate submitted citizen complaints, verify validity, approve or reject
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
           </TouchableOpacity>
 
           {/* 2. Approve Investigators */}
@@ -207,21 +211,21 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
             onPress={() => navigation.navigate('AdminInvestigatorApproval')}
             activeOpacity={0.85}
           >
-            <View style={[styles.actionIconWrapper, { backgroundColor: '#FDF2F8' }]}>
-              <Ionicons name="person-add" size={26} color="#BE185D" />
+            <View style={[styles.actionIconWrapper, { backgroundColor: '#FCE7F3' }]}>
+              <Ionicons name="person-add" size={24} color="#BE185D" />
             </View>
             <View style={styles.actionCardTexts}>
               <View style={styles.actionTitleRow}>
                 <Text style={styles.actionCardTitle}>Approve Investigators</Text>
                 {pendingApplicants.length > 0 ? (
-                  <View style={[styles.actionBadgeWarning, { backgroundColor: '#FCE7F3', borderColor: '#FBCFE8' }]}>
-                    <Text style={[styles.actionBadgeWarningText, { color: '#9D174D' }]}>
-                      {pendingApplicants.length} PENDING APPROVAL
+                  <View style={[styles.actionBadge, { backgroundColor: '#FCE7F3' }]}>
+                    <Text style={[styles.actionBadgeText, { color: '#BE185D' }]}>
+                      {pendingApplicants.length} PENDING
                     </Text>
                   </View>
                 ) : (
-                  <View style={[styles.actionBadgeWarning, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
-                    <Text style={[styles.actionBadgeWarningText, { color: '#047857' }]}>
+                  <View style={[styles.actionBadge, { backgroundColor: '#D1FAE5' }]}>
+                    <Text style={[styles.actionBadgeText, { color: '#065F46' }]}>
                       ALL VERIFIED
                     </Text>
                   </View>
@@ -231,7 +235,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
                 Review new investigator registrations, verify authority, and grant ACTIVE duty access
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
           </TouchableOpacity>
 
           {/* 3. Assign Investigators */}
@@ -240,21 +244,21 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
             onPress={() => navigation.navigate('AdminAssignInvestigator')}
             activeOpacity={0.85}
           >
-            <View style={[styles.actionIconWrapper, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="people" size={26} color="#0D4722" />
+            <View style={[styles.actionIconWrapper, { backgroundColor: '#D1E5D7' }]}>
+              <Ionicons name="people" size={24} color="#163820" />
             </View>
             <View style={styles.actionCardTexts}>
               <View style={styles.actionTitleRow}>
                 <Text style={styles.actionCardTitle}>Assign Investigators</Text>
                 {unassignedCases.length > 0 ? (
-                  <View style={[styles.actionBadgeWarning, { backgroundColor: '#FEE2E2', borderColor: '#FECACA' }]}>
-                    <Text style={[styles.actionBadgeWarningText, { color: '#B91C1C' }]}>
+                  <View style={[styles.actionBadge, { backgroundColor: '#FFE4E6' }]}>
+                    <Text style={[styles.actionBadgeText, { color: '#9F1239' }]}>
                       {unassignedCases.length} UNASSIGNED
                     </Text>
                   </View>
                 ) : (
-                  <View style={[styles.actionBadgeWarning, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
-                    <Text style={[styles.actionBadgeWarningText, { color: '#047857' }]}>
+                  <View style={[styles.actionBadge, { backgroundColor: '#D1FAE5' }]}>
+                    <Text style={[styles.actionBadgeText, { color: '#065F46' }]}>
                       ROSTER ACTIVE
                     </Text>
                   </View>
@@ -264,17 +268,17 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
                 Allocate approved cases to investigators, balance workloads, and track progress
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
           </TouchableOpacity>
 
-          {/* 4. Categorize Complaints */}
+          {/* 4. Categorize & Prioritize */}
           <TouchableOpacity
             style={styles.actionCard}
             onPress={() => navigation.navigate('AdminCategorizationList')}
             activeOpacity={0.85}
           >
-            <View style={[styles.actionIconWrapper, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="layers" size={26} color="#2563EB" />
+            <View style={[styles.actionIconWrapper, { backgroundColor: '#E0E7FF' }]}>
+              <Ionicons name="layers" size={24} color="#4338CA" />
             </View>
             <View style={styles.actionCardTexts}>
               <View style={styles.actionTitleRow}>
@@ -284,7 +288,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
                 Update legal categories, tag sensitivity levels, and set investigation priorities
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
           </TouchableOpacity>
 
           {/* 5. Manage User Accounts */}
@@ -299,9 +303,9 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
             <View style={styles.actionCardTexts}>
               <View style={styles.actionTitleRow}>
                 <Text style={styles.actionCardTitle}>Manage User Accounts</Text>
-                <View style={[styles.actionBadgeWarning, { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }]}>
-                  <Text style={[styles.actionBadgeWarningText, { color: '#6D28D9' }]}>
-                    {usersCount > 0 ? `${usersCount} ACCOUNTS` : 'SECURITY & ACCESS'}
+                <View style={[styles.actionBadge, { backgroundColor: '#F5F3FF' }]}>
+                  <Text style={[styles.actionBadgeText, { color: '#6D28D9' }]}>
+                    {usersCount > 0 ? `${usersCount} ACCOUNTS` : 'SECURITY'}
                   </Text>
                 </View>
               </View>
@@ -309,7 +313,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
                 View user profiles, update roles & credentials, and deactivate or reactivate accounts
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
           </TouchableOpacity>
 
           {/* 6. Monitor All Cases */}
@@ -318,14 +322,14 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
             onPress={() => navigation.navigate('AdminCaseList')}
             activeOpacity={0.85}
           >
-            <View style={[styles.actionIconWrapper, { backgroundColor: '#ECFDF5' }]}>
-              <Ionicons name="folder-open" size={26} color="#0D4722" />
+            <View style={[styles.actionIconWrapper, { backgroundColor: '#CFE4D4' }]}>
+              <Ionicons name="folder" size={24} color="#163820" />
             </View>
             <View style={styles.actionCardTexts}>
               <View style={styles.actionTitleRow}>
                 <Text style={styles.actionCardTitle}>Monitor All Cases</Text>
-                <View style={[styles.actionBadgeWarning, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
-                  <Text style={[styles.actionBadgeWarningText, { color: '#047857' }]}>
+                <View style={[styles.actionBadge, { backgroundColor: '#D1FAE5' }]}>
+                  <Text style={[styles.actionBadgeText, { color: '#065F46' }]}>
                     {cases.length} TOTAL CASES
                   </Text>
                 </View>
@@ -334,27 +338,27 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
                 View all cases across all jurisdictions, track status & category, and inspect investigation details
               </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color="#94A3B8" />
+            <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
           </TouchableOpacity>
         </View>
 
-
-        {/* ── INVESTIGATOR TEAM ROSTER & WORKLOAD ── */}
+        {/* ── INVESTIGATOR WORKLOAD ROSTER ── */}
         <View style={styles.sectionWrapper}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionHeading}>Investigator Workload Roster</Text>
             <TouchableOpacity
               onPress={() => navigation.navigate('AdminAssignInvestigator')}
               style={styles.headerActionLink}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Text style={styles.headerActionLinkText}>Manage ({investigators.length})</Text>
-              <Ionicons name="arrow-forward" size={13} color="#0D4722" />
+              <Ionicons name="arrow-forward" size={14} color="#163820" />
             </TouchableOpacity>
           </View>
 
           {isLoading ? (
             <View style={styles.loadingBox}>
-              <ActivityIndicator size="small" color="#0D4722" />
+              <ActivityIndicator size="small" color="#163820" />
               <Text style={styles.loadingText}>Fetching investigator workloads...</Text>
             </View>
           ) : investigators.length === 0 ? (
@@ -370,6 +374,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
               {investigators.map((inv, index) => {
                 const activeCount = inv.activeCasesCount || 0;
                 const isAvailable = activeCount === 0;
+                const initials = getInitials(inv.firstName, inv.lastName);
 
                 return (
                   <View
@@ -380,38 +385,26 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
                     ]}
                   >
                     <View style={styles.rosterAvatar}>
-                      <Text style={styles.rosterAvatarText}>
-                        {inv.firstName?.[0] || 'I'}
-                        {inv.lastName?.[0] || 'N'}
-                      </Text>
+                      <Text style={styles.rosterAvatarText}>{initials}</Text>
                     </View>
                     <View style={styles.rosterInfo}>
                       <Text style={styles.rosterName}>{inv.name}</Text>
                       <Text style={styles.rosterEmail}>{inv.email}</Text>
-                      {inv.specialization ? (
-                        <Text style={styles.rosterSpecialization} numberOfLines={1}>
-                          ⭐ {inv.specialization}
-                        </Text>
-                      ) : null}
                     </View>
                     <View
                       style={[
                         styles.rosterLoadBadge,
                         isAvailable
-                          ? { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }
-                          : activeCount > 2
-                          ? { backgroundColor: '#FEF3C7', borderColor: '#FDE68A' }
-                          : { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' },
+                          ? { backgroundColor: '#D1FAE5' }
+                          : { backgroundColor: '#E0E7FF' },
                       ]}
                     >
                       <Text
                         style={[
                           styles.rosterLoadText,
                           isAvailable
-                            ? { color: '#047857' }
-                            : activeCount > 2
-                            ? { color: '#B45309' }
-                            : { color: '#1D4ED8' },
+                            ? { color: '#065F46' }
+                            : { color: '#3730A3' },
                         ]}
                       >
                         {isAvailable ? 'Available' : `${activeCount} Cases`}
@@ -424,7 +417,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
           )}
         </View>
 
-        {/* ── RECENT COMPLAINT QUEUE ── */}
+        {/* ── AWAITING INITIAL REVIEW QUEUE ── */}
         {pendingComplaints.length > 0 && (
           <View style={styles.sectionWrapper}>
             <View style={styles.sectionHeaderRow}>
@@ -432,6 +425,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
               <TouchableOpacity
                 onPress={() => navigation.navigate('AdminComplaintsList')}
                 style={styles.headerActionLink}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
                 <Text style={styles.headerActionLinkText}>Review Queue</Text>
               </TouchableOpacity>
@@ -452,7 +446,9 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
                 <View style={styles.queueHeader}>
                   <Text style={styles.queueTrackingNumber}>{item.trackingNumber}</Text>
                   <View style={styles.queueStatusBadge}>
-                    <Text style={styles.queueStatusText}>{item.status}</Text>
+                    <Text style={styles.queueStatusText}>
+                      {item.status === 'SUBMITTED' ? 'SUBMITTED' : item.status.replace(/_/g, ' ')}
+                    </Text>
                   </View>
                 </View>
                 <Text style={styles.queueTitle} numberOfLines={2}>
@@ -464,7 +460,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
                   </Text>
                   <View style={styles.queueAction}>
                     <Text style={styles.queueActionText}>Review Now</Text>
-                    <Ionicons name="arrow-forward" size={13} color="#0D4722" />
+                    <Ionicons name="arrow-forward" size={13} color="#163820" />
                   </View>
                 </View>
               </TouchableOpacity>
@@ -481,7 +477,7 @@ export const AdminDashboard: React.FC<Props> = ({ user, navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F2F5F2',
   },
   scrollView: {
     flex: 1,
@@ -490,19 +486,20 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  /* ── Sleek Admin Header ── */
+  /* ── Sleek Admin Header Card ── */
   adminHeaderCard: {
-    backgroundColor: '#022C22',
+    backgroundColor: '#153C26',
+    marginHorizontal: 16,
+    marginTop: 8,
+    borderRadius: 28,
     paddingTop: 18,
-    paddingHorizontal: 20,
-    paddingBottom: 22,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    shadowColor: '#022C22',
+    paddingHorizontal: 18,
+    paddingBottom: 20,
+    shadowColor: '#153C26',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
-    elevation: 10,
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    elevation: 8,
   },
   headerTopRow: {
     flexDirection: 'row',
@@ -513,87 +510,87 @@ const styles = StyleSheet.create({
   adminRolePill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(6, 78, 59, 0.8)',
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 20,
     gap: 6,
-    borderWidth: 1,
-    borderColor: '#059669',
   },
   adminRolePillText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#A7F3D0',
-    letterSpacing: 0.6,
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#8CD4A4',
+    letterSpacing: 0.8,
   },
   headerDate: {
-    fontSize: 12,
-    color: '#D1FAE5',
+    fontSize: 12.5,
+    color: '#C2DEC9',
     fontWeight: '600',
   },
   adminProfileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
     gap: 14,
   },
-  adminAvatar: {
+  adminAvatarGlow: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: '#0D9488',
+    backgroundColor: '#0F3822',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#6EE7B7',
+    borderColor: '#00E676',
+    shadowColor: '#00E676',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 10,
+    elevation: 8,
   },
   adminAvatarText: {
     fontSize: 18,
-    fontWeight: '900',
+    fontWeight: '800',
     color: '#FFFFFF',
   },
   adminProfileTexts: {
     flex: 1,
   },
   adminGreeting: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#A7F3D0',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#8CD4A4',
+    letterSpacing: 0.8,
   },
   adminNameText: {
-    fontSize: 21,
-    fontWeight: '900',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#FFFFFF',
-    marginTop: 1,
-  },
-  adminSubText: {
-    fontSize: 11,
-    color: '#D1FAE5',
     marginTop: 2,
   },
-  profileBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(6, 78, 59, 0.8)',
+  adminSubText: {
+    fontSize: 12,
+    color: '#C2DEC9',
+    marginTop: 2,
+  },
+  settingsBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#059669',
   },
 
   /* ── Header Ticker ── */
   headerTicker: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(6, 78, 59, 0.6)',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
     borderWidth: 1,
-    borderColor: 'rgba(5, 150, 105, 0.35)',
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
   },
   tickerCol: {
@@ -601,21 +598,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tickerNumber: {
-    fontSize: 17,
-    fontWeight: '900',
+    fontSize: 19,
+    fontWeight: '800',
     color: '#FFFFFF',
   },
   tickerLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#A7F3D0',
-    marginTop: 2,
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#8CD4A4',
+    marginTop: 3,
     textAlign: 'center',
   },
   tickerDivider: {
     width: 1,
-    height: 22,
-    backgroundColor: 'rgba(167, 243, 208, 0.2)',
+    height: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
 
   /* ── Section Wrapper ── */
@@ -624,11 +621,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   sectionHeading: {
-    fontSize: 17,
-    fontWeight: '900',
-    color: '#0F172A',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
     marginBottom: 12,
-    letterSpacing: -0.2,
   },
   sectionHeaderRow: {
     flexDirection: 'row',
@@ -642,9 +638,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   headerActionLinkText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0D4722',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#163820',
   },
 
   /* ── Operation Action Cards ── */
@@ -652,143 +648,139 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 22,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E2EAE4',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 5,
-    elevation: 3,
-    gap: 14,
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
   actionIconWrapper: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
+    width: 52,
+    height: 52,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 14,
   },
   actionCardTexts: {
     flex: 1,
+    paddingRight: 6,
   },
   actionTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 3,
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 8,
   },
   actionCardTitle: {
     fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: '#111827',
   },
-  actionBadgeWarning: {
-    backgroundColor: '#FEF3C7',
+  actionBadge: {
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#FDE68A',
   },
-  actionBadgeWarningText: {
-    fontSize: 10,
-    fontWeight: '900',
-    color: '#B45309',
+  actionBadgeText: {
+    fontSize: 10.5,
+    fontWeight: '700',
   },
   actionCardDesc: {
-    fontSize: 12,
-    color: '#64748B',
-    lineHeight: 16,
+    fontSize: 12.5,
+    color: '#4B5563',
+    lineHeight: 17,
   },
 
   /* ── Investigator Roster Card ── */
   rosterCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 14,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E2EAE4',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
   rosterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    gap: 10,
+    borderBottomColor: '#F2F5F2',
   },
   rosterAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#0D4722',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#163820',
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 12,
   },
   rosterAvatarText: {
-    fontSize: 12,
-    fontWeight: '800',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   rosterInfo: {
     flex: 1,
   },
   rosterName: {
-    fontSize: 13,
+    fontSize: 14.5,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#111827',
   },
   rosterEmail: {
-    fontSize: 11,
-    color: '#64748B',
-  },
-  rosterSpecialization: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#0D4722',
-    marginTop: 2,
+    fontSize: 12.5,
+    color: '#4B5563',
+    marginTop: 1,
   },
   rosterLoadBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
   },
   rosterLoadText: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 12,
+    fontWeight: '600',
   },
   loadingBox: {
     paddingVertical: 24,
     alignItems: 'center',
   },
   loadingText: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 12.5,
+    color: '#6B7280',
     marginTop: 8,
   },
   emptyRoster: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 18,
+    borderRadius: 22,
     padding: 24,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E2EAE4',
   },
   emptyRosterTitle: {
     fontSize: 15,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontWeight: '700',
+    color: '#111827',
     marginTop: 8,
   },
   emptyRosterSubtitle: {
-    fontSize: 12,
-    color: '#64748B',
+    fontSize: 12.5,
+    color: '#6B7280',
     textAlign: 'center',
     marginTop: 4,
   },
@@ -796,51 +788,57 @@ const styles = StyleSheet.create({
   /* ── Complaint Queue Card ── */
   complaintQueueCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
+    borderRadius: 22,
+    padding: 18,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E2EAE4',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
   },
   queueHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   queueTrackingNumber: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
-    color: '#0D4722',
+    color: '#163820',
   },
   queueStatusBadge: {
     backgroundColor: '#FEF3C7',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
   },
   queueStatusText: {
-    fontSize: 10,
-    fontWeight: '800',
+    fontSize: 10.5,
+    fontWeight: '700',
     color: '#B45309',
   },
   queueTitle: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 8,
+    color: '#111827',
+    fontFamily: SERIF_FONT,
+    marginVertical: 6,
   },
   queueFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 8,
+    paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
+    borderTopColor: '#F2F5F2',
   },
   queueCitizen: {
-    fontSize: 11,
-    color: '#64748B',
+    fontSize: 12.5,
+    color: '#4B5563',
   },
   queueAction: {
     flexDirection: 'row',
@@ -848,8 +846,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   queueActionText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0D4722',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#163820',
   },
 });
